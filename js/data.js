@@ -7,6 +7,17 @@
   const SEAS = CC.SEAS = {};
 
   /* ---------- ingredientes: [id, nome, emoji, adjetivo do corte, segundos para cortar] ---------- */
+  CC.CUTS = {
+    board: { n: 'Tábua', e: '✂️', suf: '_c', adj: 'chop', sec: 'sec', badge: '✂️' },
+    grater: { n: 'Ralador', e: '🧀', suf: '_r', adj: 'grate', sec: 'gsec', badge: '🧀' },
+    mortar: { n: 'Pilão', e: '🔨', suf: '_m', adj: 'mash', sec: 'msec', badge: '🔨' },
+    juicer: { n: 'Espremedor', e: '🍊', suf: '_j', adj: 'juice', sec: 'jsec', badge: '🧃' },
+    peeler: { n: 'Descascador', e: '🥔', suf: '_d', adj: 'peel', sec: 'psec', badge: '🪒' }
+  };
+  CC.setCut = function (id, kind, adj, sec) {
+    const C = CC.CUTS[kind]; ING[id][C.adj] = adj; ING[id][C.sec] = sec;
+    ITEMS[id + C.suf] = { id: id + C.suf, n: ING[id].n + ' ' + adj, e: ING[id].e + '+' + C.badge, base: id, sec: sec, st: kind };
+  };
   CC.addIng = function (a) {
     const id = a[0];
     ING[id] = { id: id, n: a[1], e: a[2], chop: a[3], sec: a[4] || 0, cat: a[5] || '' };
@@ -371,7 +382,7 @@
       const r = PROD[id][0];
       acc.apps[r.app] = 1;
       r.in.forEach(function (i) { CC.needs(i, acc); });
-    } else if (it && it.base) { acc[it.st === 'grater' ? 'grater' : 'board'] = true; acc.raw[it.base] = 1; }
+    } else if (it && it.base) { acc.cuts = acc.cuts || {}; acc.cuts[it.st || 'board'] = true; if (it.st === 'grater') acc.grater = true; else if (!it.st || it.st === 'board') acc.board = true; acc.raw[it.base] = 1; }
     else if (it && it.raw) acc.raw[id] = 1;
     return acc;
   };
@@ -386,7 +397,7 @@
       r.in.forEach(function (i) { if (!seen[i]) CC.steps(i, out, depth + 1, seen); });
       out.push({ d: depth, e: it.e, n: it.n, txt: A.e + ' ' + A.n + ' (' + r.t + 's): ' + r.in.map(CC.itemName).join(' + '), liq: r.liq });
     } else if (it.base) {
-      out.push({ d: depth, e: it.e, n: it.n, txt: (it.st === 'grater' ? '🧀 Ralador (' : '✂️ Tábua (') + it.sec + 's): ' + ITEMS[it.base].e + ' ' + ITEMS[it.base].n });
+      out.push({ d: depth, e: it.e, n: it.n, txt: (CC.CUTS[it.st || 'board'].e + ' ' + CC.CUTS[it.st || 'board'].n + ' (') + it.sec + 's): ' + ITEMS[it.base].e + ' ' + ITEMS[it.base].n });
     } else out.push({ d: depth, e: it.e, n: it.n, txt: '📦 Pegue na caixa' });
     return out;
   };

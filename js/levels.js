@@ -29,7 +29,7 @@
     { id: 11, nome: 'Gastrô Chef', e: '👨‍🍳', cor: '#2c3e50', tip: 'Cardápio variado e pedidos exigentes. Divida bem as tarefas — e lave a louça!',
       menu: ['xbacon', 'gourmet', 'caesar', 'omelete_c', 'creme_batata', 'peixe_grelhado', 'frango_batata', 'carbonara', 'torta_banana', 'milkshake_morango', 'arroz_frito', 'batata_recheada'], tempo: 240, int: [13, 18], max: 6, pat: 0.9, layout: 'ilha', plates: 6, seasP: 0.4, w: 16, h: 10, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2 } },
     { id: 12, nome: 'Caos Total', e: '🔥', cor: '#6c1d1d', tip: 'Todos os pratos do livro, uma cozinha enorme dividida ao meio. Boa sorte, chef!',
-      menu: 'CLASSIC', tempo: 300, int: [11, 16], max: 7, pat: 0.85, layout: 'divisao', plates: 7, seasP: 0.45, w: 18, h: 11, extra: { pot: 3, pan: 3, grill: 2, oven: 3, fryer: 2, blender: 2, mixer: 2 } },
+      menu: 'CLASSIC', tempo: 300, int: [11, 16], max: 7, pat: 0.85, layout: 'divisao', plates: 7, seasP: 0.45, w: 22, h: 12, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2 } },
     { id: 99, nome: 'Treino Livre', e: '🧪', cor: '#34495e', tip: 'Sem relógio e sem penalidades — todos os pratos e equipamentos. Perfeito para aprender receitas.',
       menu: 'ALL', tempo: 0, int: [20, 28], max: 4, pat: 1.6, layout: 'ilha', plates: 8, seasP: 0.3, w: 18, h: 11, practice: true, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2, blender: 2, mixer: 2 } }
   ];
@@ -50,12 +50,12 @@
     { id: 20, nome: 'Sorveteria Polar', e: '🍦', cor: '#16a085', tip: 'Sorveteira: leite + creme + fruta. Maçarico para brûlée e caramelizar.', menuIds: ['sorvete_creme', 'sorvete_choco', 'sorvete_morango', 'sorvete_manga', 'sorvete_coco', 'raspadinha', 'raspa_limao', 'frozen_iogurte', 'sundae', 'banana_split', 'banana_flamb', 'creme_brulee', 'cafe_gelado', 'milkshake'], tempo: 220, int: [13, 17], max: 6, pat: 0.95, layout: 'ilha', plates: 6, seasP: 0.5, extra: { icecream: 2, torch: 1, blender: 2 } },
     { id: 21, nome: 'Mar Gourmet', e: '🦞', cor: '#1b4f72', tip: 'Lagosta, ostras e polvo: caros, mas demorados. Panela de pressão amolece o polvo.', cats: ['gourmet'], n: 12, tempo: 240, int: [14, 18], max: 6, pat: 0.95, layout: 'divisao', plates: 7, seasP: 0.4, w: 17, h: 10, extra: { steamer: 2, pressure: 2, oven: 2, pot: 2 } },
     { id: 22, nome: 'Menu Degustação', e: '👑', cor: '#7d3c98', tip: 'Todas as cozinhas do mundo num só lugar. Prepare-se.', cats: ['lanche', 'asia', 'japa', 'churras', 'veg', 'cafeteria', 'padaria', 'gourmet', 'ita', 'mex', 'doce', 'bebida', 'pizza', 'sopa'], n: 30, tempo: 280, int: [11, 15], max: 7, pat: 0.9, layout: 'ilha', plates: 8, seasP: 0.45, w: 20, h: 12, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2, blender: 1, mixer: 1, wok: 1, steamer: 1, sushi: 1, coffee: 1, icecream: 1, pressure: 1, smoker: 1, roller: 1, torch: 1, processor: 1, breader: 1, toaster: 1 } },
-    { id: 23, nome: 'Caos Supremo', e: '💥', cor: '#4a0e0e', tip: 'Cardápio enorme, cozinha gigante dividida ao meio. Só para mestres-cuca.', cats: ['lanche', 'asia', 'japa', 'churras', 'veg', 'cafeteria', 'padaria', 'gourmet', 'ita', 'mex', 'doce', 'bebida', 'pizza', 'sopa', 'br', 'mar', 'cafe', 'salada'], n: 42, tempo: 330, int: [9, 14], max: 8, pat: 0.85, layout: 'divisao', plates: 9, seasP: 0.5, w: 26, h: 15, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2, blender: 1, mixer: 1, wok: 1, steamer: 1, sushi: 1, coffee: 1, icecream: 1, pressure: 1, smoker: 1, roller: 1, torch: 1, processor: 1, breader: 1, toaster: 1 } }
+    { id: 23, nome: 'Caos Supremo', e: '💥', cor: '#4a0e0e', tip: 'Cardápio enorme, cozinha gigante dividida ao meio. Só para mestres-cuca.', cats: ['lanche', 'asia', 'japa', 'churras', 'veg', 'cafeteria', 'padaria', 'gourmet', 'ita', 'mex', 'doce', 'bebida', 'pizza', 'sopa', 'br', 'mar', 'cafe', 'salada'], n: 34, tempo: 330, int: [9, 14], max: 8, pat: 0.85, layout: 'divisao', plates: 9, seasP: 0.5, w: 26, h: 15, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2, blender: 1, mixer: 1, wok: 1, steamer: 1, sushi: 1, coffee: 1, icecream: 1, pressure: 1, smoker: 1, roller: 1, torch: 1, processor: 1, breader: 1, toaster: 1 } }
   ];
   EXTRA.forEach(function (x) { if (x.cats) x.menu = pickMenu(x.cats, x.n, x.id * 977); else x.menu = x.menuIds; });
   CC.LEVELS.splice(CC.LEVELS.length - 1, 0, ...EXTRA);
   CC.LEVELS.forEach(function (l) {
-    if (l.menu === 'CLASSIC') l.menu = pickMenu(['lanche', 'salada', 'cafe', 'pizza', 'sopa', 'br', 'mar', 'mex', 'ita', 'doce', 'bebida'], 30, 1212);
+    if (l.menu === 'CLASSIC') l.menu = pickMenu(['lanche', 'salada', 'cafe', 'pizza', 'sopa', 'br', 'mar', 'mex', 'ita', 'doce', 'bebida'], 16, 1212);
     if (l.menu === 'ALL') l.menu = all.slice();
     l.w = l.w || 15; l.h = l.h || 9;
     // potencial de pontos e estrelas
@@ -70,7 +70,7 @@
 
   /* o que a fase precisa */
   CC.levelNeeds = function (lv) {
-    const need = { raw: {}, apps: {}, board: false, grater: false, seas: {} };
+    const need = { raw: {}, apps: {}, board: false, grater: false, cuts: {}, seas: {} };
     lv.menu.forEach(function (id) {
       const d = DISHES[id];
       d.parts.forEach(function (p) {
@@ -79,6 +79,7 @@
         Object.keys(a.apps).forEach(function (k) { need.apps[k] = 1; });
         if (a.board) need.board = true;
         if (a.grater) need.grater = true;
+        Object.keys(a.cuts || {}).forEach(function (k) { need.cuts[k] = true; });
       });
       if (lv.seasP > 0) d.seas.forEach(function (s) { need.seas[s] = 1; });
     });
@@ -95,15 +96,25 @@
       const n = Math.max(1, (lv.extra && lv.extra[a]) || 1);
       for (let i = 0; i < n; i++) apps.push(a);
     });
+    const big = lv.practice || (typeof lv.id === 'number' && lv.id >= 11 && lv.id < 90) || lv.menu.length > 22;
     let boards = need.board ? Math.min(4, Math.max(2, Math.ceil(Object.keys(need.raw).filter(function (r) { return CC.ING[r].chop; }).length / 3))) : 0;
-    if (lv.practice || lv.id >= 11) boards = Math.max(boards, 3);
-    const graters = need.grater ? (lv.practice || lv.id >= 11 ? 2 : 1) : 0;
+    if (big) boards = Math.max(boards, 3);
+    const cutThings = [];
+    for (let i = 0; i < boards; i++) cutThings.push('board');
+    Object.keys(need.cuts || {}).forEach(function (k) { if (k === 'board') return; for (let i = 0; i < (big ? 2 : 1); i++) cutThings.push(k); });
+    // itens especiais: computador, doca, janelas extras
+    const specials = [];
+    if (lv.pc !== false && (lv.stock || lv.shop !== false)) specials.push({ sp: 'pc' });
+    if (lv.stock) specials.push({ sp: 'dock' });
+    for (let w = 1; w < (lv.windows || 1); w++) specials.push({ sp: 'win', win: w });
+    const items = crates.map(function (id) { return { id: id }; });
+    specials.forEach(function (s, k) { items.splice(Math.min(items.length, Math.floor((k + 1) * items.length / (specials.length + 1))), 0, s); });
     let W = lv.w, H = lv.h, L;
-    for (let tries = 0; tries < 12; tries++) {
+    for (let tries = 0; tries < 14; tries++) {
       L = layoutSlots(lv, W, H);
       const cCap = L.top.length + L.bot.length + L.leftFree.length, aCap = L.right.length + L.isl.length;
-      if (apps.length + boards + graters + Math.max(0, crates.length - (cCap - 2)) <= aCap - 1) break;
-      if (W < 32) W += 2; if (H < 18) H += 1;
+      if (apps.length + cutThings.length + Math.max(0, items.length - (cCap - 2)) <= aCap - 1) break;
+      if (W < 40) W += 2; if (H < 22) H += 1;
     }
     const grid = L.grid, put = L.put;
     const spread = function (arr, count) {
@@ -117,21 +128,24 @@
       if (c === 'W') put(s, { k: 'sink', dirty: 0, clean: 0, prog: 0 });
       if (c === 'K') put(s, { k: 'rack', n: lv.plates });
       if (c === 'D') put(s, { k: 'ret', dirty: 0 });
-      if (c === 'X') put(s, { k: 'serve', flash: 0 });
+      if (c === 'X') put(s, { k: 'serve', flash: 0, win: 0 });
     });
+    const mkItem = function (o) {
+      if (o.id) return { k: 'crate', id: o.id };
+      if (o.sp === 'pc') return { k: 'pc' };
+      if (o.sp === 'dock') return { k: 'dock', boxes: [], flash: 0 };
+      return { k: 'serve', flash: 0, win: o.win };
+    };
     const cCap = L.top.length + L.bot.length + L.leftFree.length;
-    const aCap = L.right.length + L.isl.length;
-    const nMain = Math.min(crates.length, Math.max(0, cCap - 2));
-    spread(L.top.concat(L.bot, L.leftFree), nMain).forEach(function (s, i) { put(s, { k: 'crate', id: crates[i] }); });
+    const nMain = Math.min(items.length, Math.max(0, cCap - 2));
+    spread(L.top.concat(L.bot, L.leftFree), nMain).forEach(function (s, i) { put(s, mkItem(items[i])); });
     const mk = function (kind) { return { k: 'app', kind: kind, items: [], st: 'idle', prog: 0, rec: null, out: null, burn: 0, grace: 0 }; };
     const things = apps.map(function (a) { return { app: a }; });
-    crates.slice(nMain).forEach(function (id, i) { things.splice(Math.min(things.length, 2 + i * 2), 0, { crate: id }); });
-    // tábuas entremeadas com os equipamentos
-    for (let i = 0; i < boards; i++) things.splice(Math.min(things.length, 1 + i * 3), 0, { board: true });
-    for (let i = 0; i < graters; i++) things.splice(Math.min(things.length, 2 + i * 4), 0, { grater: true });
+    items.slice(nMain).forEach(function (o, i) { things.splice(Math.min(things.length, 2 + i * 2), 0, { item: o }); });
+    cutThings.forEach(function (k, i) { things.splice(Math.min(things.length, 1 + i * 3), 0, { cut: k }); });
     spread(L.isl.concat(L.right), things.length).forEach(function (s, i) {
       const th = things[i];
-      put(s, th.board ? { k: 'board', thing: null, prog: 0 } : th.grater ? { k: 'grater', thing: null, prog: 0 } : th.crate ? { k: 'crate', id: th.crate } : mk(th.app));
+      put(s, th.cut ? { k: th.cut, thing: null, prog: 0 } : th.item ? mkItem(th.item) : mk(th.app));
     });
     return { grid: grid, W: W, H: H, need: need };
   };
@@ -147,7 +161,7 @@
     for (let y = 1; y < H - 1; y++) { L.left.push([0, y]); L.right.push([W - 1, y]); }
     L.leftFree = L.left.slice(6);
     if (lv.layout === 'ilha') {
-      const rows = H >= 15 ? [Math.floor(H / 4), Math.floor(H / 2), Math.ceil(3 * H / 4)] : H >= 12 ? [Math.floor(H / 3), Math.ceil(2 * H / 3)] : [mid];
+      const rows = H >= 18 ? [Math.floor(H / 5), Math.floor(2 * H / 5), Math.floor(3 * H / 5), Math.floor(4 * H / 5)] : H >= 15 ? [Math.floor(H / 4), Math.floor(H / 2), Math.ceil(3 * H / 4)] : H >= 12 ? [Math.floor(H / 3), Math.ceil(2 * H / 3)] : [mid];
       rows.forEach(function (y) { for (let x = 3; x <= W - 4; x++) L.isl.push([x, y]); });
     } else if (lv.layout === 'livre') {
       const cx = Math.floor(W / 2);
@@ -208,5 +222,54 @@
     const pace = cfg.pace == null ? 1 : cfg.pace;
     const INT = [[22, 28], [15, 20], [9, 13]], PAT = [1.35, 1, 0.8];
     return prep({ id: 'custom', nome: cfg.nome || 'Meu Restaurante', e: '🏪', cor: '#2980b9', tip: 'Seu restaurante, suas regras.', menu: menu, tempo: cfg.tempo, endless: !cfg.tempo, lives: 3, practice: false, int: INT[pace], max: 3 + pace * 2 + Math.min(3, Math.floor(menu.length / 12)), pat: PAT[pace], layout: cfg.layout || 'ilha', plates: 6, seasP: cfg.seasP == null ? 0.3 : cfg.seasP, extra: autoExtra(menu), stars: cfg.tempo ? null : [300, 700, 1300] });
+  };
+})(window.CC);
+
+
+/* ---------- modos de gestão: estoque, janelas e loja ---------- */
+(function (CC) {
+  'use strict';
+  const DISHES = CC.DISHES, all = Object.keys(DISHES);
+  function rngf(seed) { let s = seed >>> 0; return function () { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+  function shuffle(a, r) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function prep(lv) {
+    lv.w = lv.w || 15; lv.h = lv.h || 9;
+    const avg = lv.menu.reduce(function (s, id) { return s + DISHES[id].price; }, 0) / lv.menu.length;
+    const n = lv.tempo ? lv.tempo / ((lv.int[0] + lv.int[1]) / 2) : 10;
+    lv.pot = Math.round(n * avg);
+    if (!lv.stars) lv.stars = [0.18, 0.36, 0.55].map(function (f) { return Math.max(20, Math.round(lv.pot * f / 10) * 10); });
+    return lv;
+  }
+  function autoExtra(menu) {
+    const cnt = {};
+    menu.forEach(function (id) { DISHES[id].parts.forEach(function (p) { Object.keys(CC.needs(p).apps).forEach(function (a) { cnt[a] = (cnt[a] || 0) + 1; }); }); });
+    const ex = {}; Object.keys(cnt).forEach(function (a) { ex[a] = cnt[a] > 14 ? 3 : cnt[a] > 5 ? 2 : 1; });
+    return ex;
+  }
+  const CLASSIC = ['lanche', 'salada', 'cafe', 'pizza', 'sopa', 'br', 'mar', 'mex', 'ita', 'doce', 'bebida'];
+  const pick = function (cats, n, seed) { return shuffle(all.filter(function (id) { return cats.indexOf(DISHES[id].cat) >= 0; }), rngf(seed)).slice(0, n); };
+  CC.WIN_FAST = ['Balcão', 'Drive-thru', 'Delivery', 'Salão'];
+  CC.WIN_SALON = ['Mesa 1', 'Mesa 2', 'Mesa 3', 'Mesa 4'];
+
+  CC.makeEndless = function () {
+    const menu = pick(CLASSIC, 22, Date.now() % 100000);
+    return prep({ id: 'endless', nome: 'Modo Infinito', e: '♾️', cor: '#8e44ad', tip: 'Sem relógio: 3 vidas ❤️. Gerencie o estoque 💻, atenda 2 janelas e compre melhorias na loja!', menu: menu, tempo: 0, endless: true, lives: 3, int: [16, 22], max: 5, pat: 1, layout: 'ilha', plates: 6, seasP: 0.3, windows: 2, winNames: CC.WIN_FAST, stock: { initial: 8 }, cash: 250, extra: autoExtra(menu), stars: [300, 700, 1300] });
+  };
+  CC.makeFastFood = function () {
+    const menu = pick(['fastfood'], 22, 777);
+    return prep({ id: 'fastfood', nome: 'Fast Food', e: '🍟', cor: '#e74c3c', tip: '3 janelas: entregue cada pedido na janela certa. O estoque acaba — use o computador 💻 para chamar o caminhão!', menu: menu, tempo: 330, int: [11, 15], max: 7, pat: 0.9, layout: 'divisao', plates: 8, seasP: 0.35, windows: 3, winNames: CC.WIN_FAST, stock: { initial: 8 }, cash: 400, extra: autoExtra(menu), w: 19, h: 11 });
+  };
+  CC.makeSalon = function () {
+    const menu = pick(CLASSIC.concat(['sand', 'deli', 'cafeteria', 'padaria']), 26, 4242);
+    return prep({ id: 'salon', nome: 'Salão de Restaurante', e: '🪟', cor: '#2c7a7b', tip: 'Cada mesa é uma janela: o prato precisa ir para a janela da mesa que pediu. Estoque e loja ativos.', menu: menu, tempo: 300, int: [12, 17], max: 6, pat: 1, layout: 'ilha', plates: 8, seasP: 0.4, windows: 3, winNames: CC.WIN_SALON, stock: { initial: 8 }, cash: 400, extra: autoExtra(menu), w: 19, h: 11 });
+  };
+  CC.dailyKey = CC.dailyKey;
+  const baseCustom = CC.makeCustom;
+  CC.makeCustom = function (cfg) {
+    const lv = baseCustom(cfg);
+    lv.windows = cfg.windows || 1; lv.winNames = cfg.windows > 1 ? (cfg.winStyle === 'salao' ? CC.WIN_SALON : CC.WIN_FAST) : null;
+    if (cfg.stock) { lv.stock = { initial: 8 }; lv.cash = 400; }
+    lv.shop = cfg.shop !== false;
+    return lv;
   };
 })(window.CC);

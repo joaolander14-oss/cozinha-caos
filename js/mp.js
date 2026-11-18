@@ -2,7 +2,7 @@
    O ANFITRIÃO roda o jogo todo. Os CONVIDADOS mandam o teclado (~30×/s) e recebem o estado (~15×/s). */
 (function (CC) {
   'use strict';
-  const VER = 1, PREFIX = 'cozcaos-';
+  const VER = 2, PREFIX = 'cozcaos-';
   const MP = CC.MP = { role: null, code: null, players: [], myIdx: 0, status: '', ver: VER, listeners: {} };
   let peer = null, hostConns = [], toHost = null, stateTimer = 0, cache = [];
   const ICE = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' }, { urls: 'stun:stun.cloudflare.com:3478' }] };
@@ -30,6 +30,7 @@
     emit('lobby', MP.players);
   };
   const sendTo = function (c, m) { try { if (c && c.open) c.send(m); } catch (e) { } };
+  MP.toPlayer = function (i, m) { const p = MP.players[i]; if (p && p.conn) sendTo(p.conn, m); };
   MP.send = function (m) { if (MP.role === 'guest') sendTo(toHost, m); };
   const lobbyMsg = function () { return { t: 'lobby', players: MP.players.map(function (p) { return { name: p.name, skin: p.skin, host: !!p.host }; }) }; };
   function broadcast(m) { hostConns.forEach(function (c) { sendTo(c, m); }); }
@@ -82,6 +83,7 @@
     const i = MP.players.findIndex(function (p) { return p.conn === c; });
     if (i < 0) return;
     if (d.t === 'in') CC.Engine.setRemote(i, d.mx, d.my, d.act, d.pr);
+    else if (d.t === 'cmd') { if (d.c === 'order') CC.Engine.pcOrder(i, d.ids); else if (d.c === 'buy') CC.Engine.shopBuy(i, d.id); }
     else if (d.t === 'chat') broadcast({ t: 'chat', from: MP.players[i].name, txt: String(d.txt || '').slice(0, 80) });
   }
   function hostDrop(c) {
@@ -154,6 +156,7 @@
       if (s.gd) { s.gd.forEach(function (e) { if (g.grid[e[1]]) g.grid[e[1]][e[0]] = e[2]; }); }
       CC.Engine.applyState(Object.assign({}, s, { grid: g.grid }));
     } else if (d.t === 'chat') emit('chat', d);
+    else if (d.t === 'pc') emit('pc');
   }
   MP.chat = function (txt) { if (MP.role === 'guest') sendTo(toHost, { t: 'chat', txt: txt }); else if (MP.role === 'host') { broadcast({ t: 'chat', from: MP.players[0].name, txt: txt }); emit('chat', { from: MP.players[0].name, txt: txt }); } };
   MP.updateProfile = function (name, skin) { if (MP.role === 'host') { MP.players[0].name = name; MP.players[0].skin = skin; lobbyChanged(); } };

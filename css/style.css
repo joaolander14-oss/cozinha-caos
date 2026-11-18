@@ -121,3 +121,25 @@ select{background:#16100c;color:var(--txt);border:1px solid var(--line);border-r
 button:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:900px){.customcols{grid-template-columns:1fr}}
 .bscroll{height:calc(100% - 70px);overflow:auto}
+
+.winbadge{position:absolute;left:6px;top:-9px;color:#fff;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:8px;box-shadow:0 2px 4px #0006}
+.ticket{margin-top:6px}
+.stat.cashst{color:#8fe3a1}
+.qguide{position:fixed;z-index:20;width:390px;max-height:70vh;overflow:auto;background:#241a13;border:2px solid var(--acc);border-radius:14px;padding:12px 14px;box-shadow:0 12px 34px #000b;pointer-events:none}
+.steps.tight li{margin:3px 0;font-size:12.5px}.qguide .dt-head h3{font-size:16px}
+.pcwrap{width:96%;height:92%;background:var(--bg);border:2px solid #1de9b6;border-radius:16px;overflow:auto;padding:14px 18px}
+.cash{font-size:22px;font-weight:800;color:#8fe3a1;background:var(--panel);border-radius:10px;padding:4px 14px}
+.pccols{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;height:calc(100% - 72px)}
+.pcleft,.pcright{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;overflow:auto}
+.ingrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.ingcard{background:var(--panel2);border:2px solid transparent;border-radius:12px;padding:8px 4px;text-align:center;cursor:pointer}
+.ingcard:hover{border-color:var(--acc)}.ingcard.low{border-color:#e67e22}.ingcard.zero{border-color:#c0392b;background:#3a1f1c}
+.ingn{font-weight:700;font-size:12.5px}.ings,.ingp{font-size:11.5px;color:var(--mut)}.sv{font-weight:800;color:var(--acc2)}
+.slots{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.slot{position:relative;min-height:84px;border:2px dashed var(--line);border-radius:12px;text-align:center;padding:8px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.slot.full{border-style:solid;border-color:#b08850;background:#3a2c1c}.xbtn{position:absolute;right:4px;top:3px;background:none;border:0;color:#ff8a80;font-size:14px}
+.total{margin:10px 0;font-size:16px}.total .v{font-weight:800;color:var(--acc2)}.trucks{margin-top:12px;font-size:13px}
+.shopgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.shopcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}.shopcard.maxed{opacity:.6}
+.shophead{display:flex;gap:10px;align-items:center}.pips{color:#4b4036;letter-spacing:3px}.pips .on{color:var(--acc2)}
+label.chk{flex-direction:row!important;align-items:center;gap:8px!important}

@@ -6,6 +6,22 @@
   let G = null, raf = 0, lastT = 0, cvs = null;
   const keys = {};
   const TS = CC.TS = 64;
+  CC.SHOP = {
+    tray: { n: 'Bandeja', e: '🍽️', d: 'Carrega +1 prato empilhado por nível', cost: [120, 220, 380] },
+    cart: { n: 'Carrinho de pratos', e: '🛒', d: 'Carrega até 7 pratos de uma vez (−15% de velocidade)', cost: [500] },
+    knife: { n: 'Faca afiada', e: '🔪', d: 'Corta, rala, pila e espreme +35% mais rápido por nível', cost: [100, 180, 300] },
+    sponge: { n: 'Esponja turbo', e: '🧽', d: 'Lava a louça +60% mais rápido por nível', cost: [80, 140, 240] },
+    auto: { n: 'Lava-louças', e: '🫧', d: 'A pia lava pratos sozinha', cost: [260, 420] },
+    shoes: { n: 'Tênis de corrida', e: '👟', d: '+8% de velocidade por nível', cost: [100, 180, 300] },
+    heat: { n: 'Fogões potentes', e: '🔥', d: 'Tudo cozinha +12% mais rápido por nível', cost: [160, 280, 440] },
+    timer: { n: 'Timer de segurança', e: '⏲️', d: 'A comida demora +5s para queimar por nível', cost: [90, 160, 260] },
+    patience: { n: 'Atendimento simpático', e: '😊', d: 'Clientes esperam +12% por nível', cost: [120, 220, 360] },
+    price: { n: 'Preços premium', e: '💎', d: '+8% no valor de cada prato por nível', cost: [180, 320, 500] },
+    express: { n: 'Caminhão expresso', e: '🚚', d: 'Entregas de estoque 12% mais rápidas por nível', cost: [90, 170, 280] },
+    boxes: { n: 'Caminhão maior', e: '📦', d: '+1 caixa por pedido de estoque (máx. 6)', cost: [110, 200] },
+    plates: { n: 'Mais pratos', e: '🥣', d: '+2 pratos limpos no balcão (até 3 vezes)', cost: [60, 90, 120] }
+  };
+  function up(k) { return (G && G.up && G.up[k]) || 0; }
 
   /* ---------- multiconjuntos ---------- */
   function cnt(a) { const m = {}; a.forEach(function (x) { m[x] = (m[x] || 0) + 1; }); return m; }
@@ -45,12 +61,13 @@
         sfx('start');
       } else { a.grace = 0; a.wait = 0; }
     } else if (a.st === 'cook') {
-      a.prog += dt;
+      a.prog += dt * (1 + 0.12 * up('heat'));
       if (a.prog >= a.rec.t) { a.st = 'done'; a.out = a.rec.out; a.items = []; a.burn = 0; sfx('done'); toast(ITEMS[a.out].n + ' pronto!', 'ok'); }
     } else if (a.st === 'done') {
       a.burn += dt;
-      if (a.burn > 8 && !a.warned) { a.warned = true; sfx('warn'); }
-      if (a.burn >= 14) { a.out = 'queimado'; a.st = 'burnt'; a.warned = false; if (G) G.burnt++; sfx('burn'); toast('Queimou! Jogue no lixo', 'bad'); }
+      const BA = 14 + 5 * up('timer');
+      if (a.burn > BA - 6 && !a.warned) { a.warned = true; sfx('warn'); }
+      if (a.burn >= BA) { a.out = 'queimado'; a.st = 'burnt'; a.warned = false; if (G) G.burnt++; sfx('burn'); toast('Queimou! Jogue no lixo', 'bad'); }
     }
   }
 
@@ -61,7 +78,7 @@
   function mkPlayer(i, built, skin, name) {
     const sp = [[2.5, 2.5], [2.5, built.H - 1.5], [4.5, 2.5], [4.5, built.H - 1.5]][i];
     skin = skin || {};
-    return { id: i, x: sp[0], y: sp[1], dx: 0, dy: 1, hold: null, mx: 0, my: 0, act: false, dash: 0, dcd: 0, color: skin.color || COLS[i], hat: skin.hat || 'toque', walk: 0, name: name || ('P' + (i + 1)), chopping: false, msg: '', msgT: 0, remote: false };
+    return { id: i, x: sp[0], y: sp[1], dx: 0, dy: 1, hold: null, mx: 0, my: 0, act: false, dash: 0, dcd: 0, color: skin.color || COLS[i], hat: skin.hat || 'toque', walk: 0, name: name || ('P' + (i + 1)), chopping: false, actKind: '', tray: [], msg: '', msgT: 0, remote: false };
   }
   E.start = function (canvas, lv, opts) {
     cvs = canvas; opts = opts || {};
@@ -77,6 +94,10 @@
     const rel = {};
     G.menu.forEach(function (d) { d.parts.forEach(function walk(id) { if (rel[id]) return; rel[id] = 1; (CC.PROD[id] || []).forEach(function (r) { r.in.forEach(walk); }); }); });
     G.recs = RECIPES.filter(function (r) { return rel[r.out]; });
+    G.up = {}; Object.keys(CC.SHOP).forEach(function (k) { G.up[k] = 0; });
+    G.stockOn = !!lv.stock; G.shopOn = lv.shop !== false; G.cash = lv.cash != null ? lv.cash : (lv.stock ? 300 : 0); G.trucks = []; G.nwin = lv.windows || 1;
+    G.stock = {}; G.stockIds = [];
+    G.grid.forEach(function (row) { row.forEach(function (t) { if (t && t.k === 'crate' && !CC.SEAS[t.id] && G.stockIds.indexOf(t.id) < 0) { G.stockIds.push(t.id); if (G.stockOn) G.stock[t.id] = (lv.stock && lv.stock.initial) || 6; } }); });
     const np = opts.players || 1;
     for (let i = 0; i < np; i++) G.players.push(mkPlayer(i, built, opts.skins && opts.skins[i], opts.names && opts.names[i]));
     (opts.remote || []).forEach(function (i) { if (G.players[i]) G.players[i].remote = true; });
@@ -110,21 +131,24 @@
     return {
       W: G.W, H: G.H, grid: grid, ev: ev,
       score: G.score, left: G.left, time: G.time, combo: G.combo, delivered: G.delivered, failed: G.failed, over: G.over, countdown: G.countdown, lives: G.lives, tips: G.tips, bestCombo: G.bestCombo,
+      cash: G.cash, stock: G.stock, up: G.up, stockOn: G.stockOn, shopOn: G.shopOn, nwin: G.nwin, trucks: G.trucks.map(function (t) { return { t: t.t, n: t.boxes.length }; }),
       result: G.result || null,
-      orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, seas: o.seas, t: o.t, tmax: o.tmax, vip: o.vip }; }),
-      players: G.players.map(function (p) { return { x: p.x, y: p.y, dx: p.dx, dy: p.dy, hold: p.hold, chopping: p.chopping, dash: p.dash, walk: p.walk, msg: p.msg, msgT: p.msgT, color: p.color, hat: p.hat, name: p.name, dcd: p.dcd }; })
+      orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, seas: o.seas, t: o.t, tmax: o.tmax, vip: o.vip, win: o.win }; }),
+      players: G.players.map(function (p) { return { x: p.x, y: p.y, dx: p.dx, dy: p.dy, hold: p.hold, tray: p.tray, actKind: p.actKind, chopping: p.chopping, dash: p.dash, walk: p.walk, msg: p.msg, msgT: p.msgT, color: p.color, hat: p.hat, name: p.name, dcd: p.dcd }; })
     };
   };
   E.applyState = function (s, first) {
     G.W = s.W; G.H = s.H; G.grid = s.grid;
     G.score = s.score; G.left = s.left; G.time = s.time; G.combo = s.combo; G.delivered = s.delivered; G.failed = s.failed; G.over = s.over; G.countdown = s.countdown; G.lives = s.lives; G.tips = s.tips; G.bestCombo = s.bestCombo;
     if (s.result) G.result = s.result;
-    G.orders = s.orders.map(function (o) { return { id: o.id, dish: DISHES[o.dish], seas: o.seas, t: o.t, tmax: o.tmax, vip: o.vip }; });
+    G.cash = s.cash; G.stock = s.stock; G.up = s.up; G.stockOn = s.stockOn; G.shopOn = s.shopOn; G.nwin = s.nwin; G.trucks = s.trucks;
+    if (!G.stockIds) { G.stockIds = []; s.grid.forEach(function (row) { row.forEach(function (t) { if (t && t.k === 'crate' && !CC.SEAS[t.id] && G.stockIds.indexOf(t.id) < 0) G.stockIds.push(t.id); }); }); }
+    G.orders = s.orders.map(function (o) { return { id: o.id, dish: DISHES[o.dish], seas: o.seas, t: o.t, tmax: o.tmax, vip: o.vip, win: o.win }; });
     s.players.forEach(function (q, i) {
       let p = G.players[i];
       if (!p) { p = G.players[i] = Object.assign({ id: i, mx: 0, my: 0, act: false, remote: false, tx: q.x, ty: q.y }, q); }
       const mine = i === G.myIdx;
-      ['dx', 'dy', 'hold', 'chopping', 'dash', 'walk', 'msg', 'msgT', 'color', 'hat', 'name', 'dcd'].forEach(function (k) { if (!(mine && (k === 'dx' || k === 'dy' || k === 'dash' || k === 'walk' || k === 'dcd'))) p[k] = q[k]; });
+      ['dx', 'dy', 'hold', 'tray', 'actKind', 'chopping', 'dash', 'walk', 'msg', 'msgT', 'color', 'hat', 'name', 'dcd'].forEach(function (k) { if (!(mine && (k === 'dx' || k === 'dy' || k === 'dash' || k === 'walk' || k === 'dcd'))) p[k] = q[k]; });
       p.tx = q.x; p.ty = q.y;
       if (first || Math.hypot(p.x - q.x, p.y - q.y) > 1.6) { p.x = q.x; p.y = q.y; }
     });
@@ -143,6 +167,7 @@
     G.toasts.forEach(function (t) { t.t -= dt; }); G.toasts = G.toasts.filter(function (t) { return t.t > 0; });
     for (let y = 0; y < G.H; y++) for (let x = 0; x < G.W; x++) { const t = G.grid[y][x]; if (t) { t.x = x; t.y = y; } }
     emitParticles(dt);
+    CC.Sound.ambient(G, dt, listeners());
     if (G.shake > 0) G.shake -= dt;
   }
   E.stop = function () { cancelAnimationFrame(raf); raf = 0; teardownInput(); G = null; };
@@ -151,7 +176,8 @@
     if (!G) return null;
     return {
       score: G.score, left: G.left, time: G.time, combo: G.combo, delivered: G.delivered, failed: G.failed, over: G.over, countdown: G.countdown, lives: G.lives, endless: !!G.lv.endless,
-      orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, t: o.t, tmax: o.tmax, seas: o.seas, vip: o.vip }; }),
+      cash: G.cash, stock: G.stock, up: G.up, stockOn: G.stockOn, shopOn: G.shopOn, nwin: G.nwin, stockIds: G.stockIds, trucks: G.trucks ? G.trucks.map(function (t) { return { t: t.t, n: t.boxes.length }; }) : [],
+      orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, t: o.t, tmax: o.tmax, seas: o.seas, vip: o.vip, win: o.win }; }),
       toasts: G.toasts.slice(-3).map(function (t) { return { id: t.id, txt: t.txt, kind: t.kind }; }),
       result: G.result || null
     };
@@ -170,34 +196,36 @@
     const seas = [];
     if (lv.seasP > 0 && d.seas.length && Math.random() < lv.seasP) seas.push(d.seas[Math.floor(Math.random() * d.seas.length)]);
     const players = G.players.length;
-    const tmax = Math.round(d.time * lv.pat * (players === 1 ? 1.15 : 1) * (lv.endless ? Math.max(0.55, 1 - G.time / 900) : 1));
+    const tmax = Math.round(d.time * lv.pat * (1 + 0.12 * up('patience')) * (players === 1 ? 1.15 : 1) * (lv.endless ? Math.max(0.55, 1 - G.time / 900) : 1));
     const vip = !lv.practice && Math.random() < 0.08;
-    G.orders.push({ id: G.oid++, dish: d, seas: seas, t: tmax, tmax: tmax, vip: vip });
+    G.orders.push({ id: G.oid++, dish: d, seas: seas, t: tmax, tmax: tmax, vip: vip, win: G.nwin > 1 ? Math.floor(Math.random() * G.nwin) : 0 });
     sfx('order');
   }
   function nextInterval() {
     const lv = G.lv, f = (G.players.length === 1 ? 1.25 : G.players.length >= 3 ? 0.8 : 1) * (lv.endless ? Math.max(0.4, 1 - G.time / 700) : 1);
     return (lv.int[0] + Math.random() * (lv.int[1] - lv.int[0])) * f;
   }
+  function winName(i) { const n = G.lv.winNames; return (n && n[i]) || ('Janela ' + String.fromCharCode(65 + i)); }
+  CC.winName = function (lv, i) { return (lv.winNames && lv.winNames[i]) || ('Janela ' + String.fromCharCode(65 + i)); };
   function deliver(p, plate, tile) {
     const parts = plate.items.filter(function (i) { return !isSeason(i); });
     const seas = plate.items.filter(isSeason);
+    const match = G.orders.filter(function (o) { return sameSet(o.dish.parts, parts) && o.seas.every(function (s) { return seas.indexOf(s) >= 0; }); });
+    if (!match.length) { say(p, 'Ninguém pediu isso!'); sfx('wrong'); toast('Prato errado: ninguém pediu isso', 'bad'); return false; }
     let best = null;
-    G.orders.forEach(function (o) {
-      if (sameSet(o.dish.parts, parts) && o.seas.every(function (s) { return seas.indexOf(s) >= 0; })) { if (!best || o.t < best.t) best = o; }
-    });
-    if (!best) { say(p, 'Ninguém pediu isso!'); sfx('wrong'); toast('Prato errado: ninguém pediu isso', 'bad'); return false; }
+    match.forEach(function (o) { if (G.nwin > 1 && o.win !== (tile.win || 0)) return; if (!best || o.t < best.t) best = o; });
+    if (!best) { const o = match[0]; say(p, 'É da ' + winName(o.win) + '!'); sfx('wrong'); toast('Esse pedido é da ' + winName(o.win), 'bad'); return false; }
     const frac = best.t / best.tmax;
-    const base = best.dish.price + (best.seas.length ? 5 : 0);
-    const tip = Math.round(base * 0.5 * frac / 1);
+    const base = Math.round((best.dish.price + (best.seas.length ? 5 : 0)) * (1 + 0.08 * up('price')));
+    const tip = Math.round(base * 0.5 * frac);
     G.combo++; G.bestCombo = Math.max(G.bestCombo, G.combo); G.dishCount[best.dish.id] = (G.dishCount[best.dish.id] || 0) + 1;
     const cb = Math.min(G.combo - 1, 6) * 3;
     const pts = (base + tip + cb) * (best.vip ? 2 : 1);
-    G.score += pts; G.tips += tip; G.delivered++;
+    G.score += pts; G.cash += pts; G.tips += tip; G.delivered++;
     G.orders.splice(G.orders.indexOf(best), 1);
     float(tile.x + 0.5, tile.y + 0.2, '+' + pts + (G.combo > 1 ? ' x' + G.combo : ''), '#ffd84a');
     toast(best.dish.n + ' entregue! +' + pts, 'ok');
-    sfx('ding');
+    sfx('ding'); sfx('coin');
     tile.flash = 0.6;
     G.pending.push({ t: 6 + Math.random() * 3 });
     return true;
@@ -218,35 +246,66 @@
   function isItem(h) { return typeof h === 'string'; }
 
   /* ---------- interação (pegar/colocar) ---------- */
+  const SLOTS = { counter: 1, board: 1, grater: 1, mortar: 1, juicer: 1, peeler: 1 };
+  function plateLike(x) { return !!(x && (x.plate || x.dirty)); }
+  function trayCap() { return up('cart') ? 7 : 1 + up('tray'); }
+  function tileGivesPlate(t) {
+    if (t.k === 'rack') return t.n > 0;
+    if (t.k === 'sink') return t.clean > 0;
+    if (t.k === 'ret') return t.dirty > 0;
+    if (SLOTS[t.k]) return plateLike(t.thing);
+    return false;
+  }
   function interact(p) {
     if (G.over || G.countdown > 0) return;
     const tg = target(p);
     if (!tg) return;
-    const t = tg.t, h = p.hold;
+    const t = tg.t;
     t.x = tg.x; t.y = tg.y;
+    // bandeja/carrinho: empilha o prato da mão para pegar outro
+    if (plateLike(p.hold) && tileGivesPlate(t) && p.tray.length < trayCap() - 1) { p.tray.push(p.hold); p.hold = null; }
+    interactCore(p, t, tg);
+    if (!p.hold && p.tray.length && !SLOTS[t.k]) { p.hold = p.tray.pop(); }
+  }
+  function interactCore(p, t, tg) {
+    const h = p.hold;
     switch (t.k) {
-      case 'counter': case 'board': case 'grater': return interactSlot(p, t);
+      case 'counter': case 'board': case 'grater': case 'mortar': case 'juicer': case 'peeler': return interactSlot(p, t);
       case 'crate': {
-        const season = isSeason(t.id);
-        if (!h) { p.hold = season ? { shaker: t.id } : t.id; sfx('pick'); return; }
-        if (isPlate(h)) { if (canAdd(h, t.id)) { h.items.push(t.id); sfx('pick'); } else say(p, 'Não combina com este prato'); return; }
-        if (h.shaker === t.id || h === t.id) { p.hold = null; sfx('put'); return; }
+        const season = isSeason(t.id), need = G.stockOn && !season;
+        if (h && h.box) {
+          if (h.box === t.id) { G.stock[t.id] = (G.stock[t.id] || 0) + h.n; float(t.x + 0.5, t.y, '+' + h.n + ' ' + ITEMS[t.id].e, '#8fe3a1'); p.hold = null; sfx('box'); }
+          else say(p, 'Caixa de ' + ITEMS[h.box].n);
+          return;
+        }
+        if (!h) {
+          if (need && !(G.stock[t.id] > 0)) { say(p, 'Sem estoque! Use o computador 💻'); sfx('wrong'); return; }
+          if (need) G.stock[t.id]--;
+          p.hold = season ? { shaker: t.id } : t.id; sfx('pick'); return;
+        }
+        if (isPlate(h)) {
+          if (!canAdd(h, t.id)) { say(p, 'Não combina com este prato'); return; }
+          if (need) { if (!(G.stock[t.id] > 0)) { say(p, 'Sem estoque!'); sfx('wrong'); return; } G.stock[t.id]--; }
+          h.items.push(t.id); sfx('pick'); return;
+        }
+        if (h.shaker === t.id || h === t.id) { p.hold = null; if (need && h === t.id) G.stock[t.id]++; sfx('put'); }
         return;
       }
       case 'app': return interactApp(p, t);
       case 'trash':
         if (!h) return;
+        if (h.box) { say(p, 'Não jogue o estoque fora!'); return; }
         if (isPlate(h)) { if (h.items.length) { h.items = []; sfx('trash'); } return; }
         if (h.dirty) return;
         p.hold = null; sfx('trash'); return;
       case 'sink':
-        if (h && h.dirty) { t.dirty++; p.hold = null; sfx('put'); return; }
+        if (h && h.dirty) { let n = 1; p.tray = p.tray.filter(function (x) { if (x.dirty) { n++; return false; } return true; }); t.dirty += n; p.hold = null; sfx('put'); return; }
         if (!h && t.clean > 0) { t.clean--; p.hold = newPlate(); sfx('pick'); return; }
-        if (isPlate(h) && !h.items.length) { t.clean++; p.hold = null; sfx('put'); return; }
+        if (isPlate(h) && !h.items.length) { let n = 1; p.tray = p.tray.filter(function (x) { if (x.plate && !x.items.length) { n++; return false; } return true; }); t.clean += n; p.hold = null; sfx('put'); return; }
         return;
       case 'rack':
         if (!h && t.n > 0) { t.n--; p.hold = newPlate(); sfx('pick'); return; }
-        if (isPlate(h) && !h.items.length) { t.n++; p.hold = null; sfx('put'); }
+        if (isPlate(h) && !h.items.length) { let n = 1; p.tray = p.tray.filter(function (x) { if (x.plate && !x.items.length) { n++; return false; } return true; }); t.n += n; p.hold = null; sfx('put'); }
         return;
       case 'ret':
         if (!h && t.dirty > 0) { t.dirty--; p.hold = { dirty: 1 }; sfx('pick'); }
@@ -256,16 +315,22 @@
         else if (isPlate(h)) say(p, 'Prato vazio');
         else if (h && h.dirty) say(p, 'Isso vai na pia!');
         return;
+      case 'dock':
+        if (!h && t.boxes.length) { const b = t.boxes.shift(); p.hold = { box: b.id, n: b.n }; sfx('box'); }
+        else if (h && h.box) { t.boxes.push({ id: h.box, n: h.n }); p.hold = null; sfx('put'); }
+        else if (!h) say(p, 'Nenhuma caixa na doca');
+        return;
+      case 'pc':
+        sfx('click'); if (E.onPc) E.onPc(p.id);
+        return;
     }
   }
 
   function interactSlot(p, t) {
     const h = p.hold, s = t.thing;
+    if (!h && !s && p.tray.length) { p.hold = p.tray.pop(); sfx('pick'); return; }
     if (!h && s) { p.hold = s; t.thing = null; t.prog = 0; sfx('pick'); return; }
-    if (h && !s) {
-      if (t.k === 'board' && isItem(h) && !CC.ITEMS[h].chop && h !== 'queimado' && false) return;
-      t.thing = h; p.hold = null; t.prog = 0; sfx('put'); return;
-    }
+    if (h && !s) { t.thing = h; p.hold = null; t.prog = 0; sfx('put'); return; }
     if (h && s) {
       if (isPlate(h) && isItem(s)) { if (canAdd(h, s)) { h.items.push(s); t.thing = null; sfx('pick'); } else say(p, 'Não combina'); return; }
       if (isPlate(s) && isItem(h)) { if (canAdd(s, h)) { s.items.push(h); p.hold = null; sfx('pick'); } else say(p, 'Não combina'); return; }
@@ -303,24 +368,24 @@
   }
   function resetApp(a) { a.st = 'idle'; a.out = null; a.rec = null; a.prog = 0; a.burn = 0; a.warned = false; a.items = []; a.grace = 0; a.wait = 0; }
 
-  /* ação segurada (cortar / lavar) */
+  /* ação segurada (cortar, ralar, pilar, espremer, descascar, lavar) */
   function holdAction(p, dt) {
-    p.chopping = false;
+    p.chopping = false; p.actKind = '';
     const tg = target(p);
     if (!tg) return;
-    const t = tg.t;
-    if ((t.k === 'board' || t.k === 'grater') && isItem(t.thing) && ITEMS[t.thing].raw && CC.ING[t.thing] && (t.k === 'board' ? CC.ING[t.thing].chop : CC.ING[t.thing].grate)) {
-      const g = CC.ING[t.thing], sec = t.k === 'board' ? g.sec : g.gsec;
-      p.chopping = true;
-      t.prog += dt / sec;
-      if (t.prog >= 1) { t.thing = t.thing + (t.k === 'board' ? '_c' : '_r'); t.prog = 0; sfx('chopdone'); float(tg.x + 0.5, tg.y, t.k === 'board' ? '✂️' : '🧀', '#fff'); }
+    const t = tg.t, C = CC.CUTS[t.k];
+    if (C && isItem(t.thing) && ITEMS[t.thing].raw && CC.ING[t.thing] && CC.ING[t.thing][C.adj]) {
+      const sec = CC.ING[t.thing][C.sec] || 2.5;
+      p.chopping = true; p.actKind = t.k;
+      t.prog += dt * (1 + 0.35 * up('knife')) / sec;
+      if (t.prog >= 1) { t.thing = t.thing + C.suf; t.prog = 0; sfx('chopdone'); float(tg.x + 0.5, tg.y, C.badge, '#fff'); }
     } else if (t.k === 'sink' && t.dirty > 0) {
-      p.chopping = true;
-      t.prog += dt / 3;
+      p.chopping = true; p.actKind = 'wash';
+      t.prog += dt * (1 + 0.6 * up('sponge')) / 3;
+      if (Math.random() < dt * 14) G.parts.push({ x: tg.x + 0.25 + Math.random() * 0.5, y: tg.y + 0.45, vy: -0.5, t: 0.8, c: 'rgba(130,200,255,', r: 0.05 + Math.random() * 0.05 });
       if (t.prog >= 1) { t.prog = 0; t.dirty--; t.clean++; sfx('chopdone'); }
     }
   }
-  function ING_CHOP(id) { const i = CC.ING[id]; if (i && i.chop) { ITEMS[id].sec_real = i.sec; return true; } return false; }
 
   /* ---------- física ---------- */
   const R = 0.3;
@@ -329,7 +394,7 @@
     let mx = p.mx, my = p.my;
     const mag = Math.hypot(mx, my);
     if (mag > 0) { mx /= mag; my /= mag; if (Math.abs(mx) > Math.abs(my) + 0.01) { p.dx = Math.sign(mx); p.dy = 0; } else if (Math.abs(my) > Math.abs(mx) + 0.01) { p.dx = 0; p.dy = Math.sign(my); } else { p.dx = Math.sign(mx); p.dy = 0; } }
-    let sp = 4.4;
+    let sp = 4.4 * (1 + 0.08 * up('shoes')) * (up('cart') ? 0.85 : p.tray && p.tray.length >= 2 ? 0.94 : 1);
     if (p.dash > 0) { p.dash -= dt; sp = 10.5; if (!mag) { mx = p.dx; my = p.dy; } }
     if (p.act && p.chopping) { mx = 0; my = 0; }
     const nx = p.x + mx * sp * dt, ny = p.y + my * sp * dt;
@@ -362,7 +427,7 @@
       if (o.t <= 0) {
         if (lv.practice) { o.t = o.tmax; continue; }
         G.orders.splice(i, 1); G.failed++; G.combo = 0;
-        const pen = Math.round(o.dish.price * 0.4); G.score = Math.max(0, G.score - pen);
+        const pen = Math.round(o.dish.price * 0.4); G.score = Math.max(0, G.score - pen); G.cash = Math.max(0, G.cash - pen);
         toast('Pedido perdido: ' + o.dish.n + ' (-' + pen + ')', 'bad'); sfx('fail'); G.shake = 0.3;
         if (lv.endless) { G.lives--; if (G.lives <= 0) return finish(); }
       }
@@ -379,8 +444,19 @@
       if (!t) continue;
       t.x = x; t.y = y;
       if (t.k === 'app') updateApp(t, dt);
+      if (t.k === 'sink' && up('auto') && t.dirty > 0) { t.auto = (t.auto || 0) + dt; if (t.auto >= 9 - 3 * up('auto')) { t.auto = 0; t.dirty--; t.clean++; } }
       if (t.flash > 0) t.flash -= dt;
     }
+    // caminhões de estoque
+    for (let i = G.trucks.length - 1; i >= 0; i--) {
+      const tr = G.trucks[i]; tr.t -= dt;
+      if (tr.t <= 0) {
+        G.trucks.splice(i, 1);
+        const d = findTile('dock'); if (d) { tr.boxes.forEach(function (b) { d.boxes.push(b); }); d.flash = 1.2; }
+        sfx('truck'); toast('🚚 O caminhão chegou! Pegue as caixas na doca', 'ok');
+      }
+    }
+    CC.Sound.ambient(G, dt, listeners());
     // pratos sujos voltando
     for (let i = G.pending.length - 1; i >= 0; i--) {
       G.pending[i].t -= dt;
@@ -394,6 +470,7 @@
     if (G.shake > 0) G.shake -= dt;
     emitParticles(dt);
   };
+  function listeners() { if (!G) return []; if (G.client) return G.players[G.myIdx] ? [G.players[G.myIdx]] : []; return G.players.filter(function (p) { return !p.remote; }); }
   function findTile(k) { for (let y = 0; y < G.H; y++) for (let x = 0; x < G.W; x++) { const t = G.grid[y][x]; if (t && t.k === k) return t; } return null; }
 
   function emitParticles(dt) {
@@ -413,10 +490,38 @@
     G.over = true;
     const lv = G.lv, st = lv.stars || [100, 250, 450];
     const stars = G.score >= st[2] ? 3 : G.score >= st[1] ? 2 : G.score >= st[0] ? 1 : 0;
-    G.result = { score: G.score, stars: stars, delivered: G.delivered, failed: G.failed, tips: G.tips, bestCombo: G.bestCombo, need: st, time: Math.round(G.time), burnt: G.burnt, dishes: G.dishCount };
+    G.result = { score: G.score, stars: stars, delivered: G.delivered, failed: G.failed, tips: G.tips, bestCombo: G.bestCombo, need: st, time: Math.round(G.time), burnt: G.burnt, dishes: G.dishCount, cash: G.cash };
     sfx(stars ? 'win' : 'lose');
   }
   E.finish = function () { if (G && !G.over) finish(); };
+  /* computador: pedir estoque e comprar melhorias (rodam no anfitrião) */
+  E.maxBoxes = function () { return Math.min(6, 4 + up('boxes')); };
+  E.boxCost = function (id) { return CC.priceOf(id) * 4; };
+  E.truckDelay = function () { return Math.round(26 * Math.pow(0.88, up('express'))); };
+  E.pcOrder = function (idx, ids) {
+    if (!G || G.over || !G.stockOn) return false;
+    ids = (ids || []).filter(function (id) { return G.stockIds.indexOf(id) >= 0; }).slice(0, E.maxBoxes());
+    if (!ids.length) return false;
+    const cost = ids.reduce(function (s, id) { return s + E.boxCost(id); }, 0);
+    if (cost > G.cash) { sfx('nobuy'); toast('Dinheiro insuficiente para o pedido', 'bad'); return false; }
+    if (!findTile('dock')) return false;
+    G.cash -= cost;
+    G.trucks.push({ t: E.truckDelay(), boxes: ids.map(function (id) { return { id: id, n: 4 }; }) });
+    sfx('buy'); toast('📦 Pedido enviado (-' + cost + '). O caminhão chega em ' + E.truckDelay() + 's', 'ok');
+    return true;
+  };
+  E.shopBuy = function (idx, id) {
+    const it = CC.SHOP[id];
+    if (!G || G.over || !it) return false;
+    const lvl = up(id);
+    if (lvl >= it.cost.length) { toast(it.n + ' já está no máximo', 'bad'); return false; }
+    if (G.cash < it.cost[lvl]) { sfx('nobuy'); toast('Dinheiro insuficiente', 'bad'); return false; }
+    G.cash -= it.cost[lvl]; G.up[id] = lvl + 1;
+    if (id === 'plates') { const r = findTile('rack'); if (r) r.n += 2; }
+    sfx('buy'); toast(it.e + ' ' + it.n + ' comprado!', 'ok');
+    return true;
+  };
+  E.onPc = null;
 
   /* ---------- laço ---------- */
   function loop(now) {
@@ -532,39 +637,10 @@
   E.interact = function (i) { interact(G.players[i]); };
   E.canAdd = canAdd;
 
-  /* ---------- som ---------- */
-  let actx = null;
-  CC.sound = true;
-  function tone(f, d, type, vol, slide) {
-    if (!CC.sound) return;
-    try {
-      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-      const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime;
-      o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
-      if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + d);
-      g.gain.setValueAtTime(vol || 0.06, t); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d);
-    } catch (e) {}
-  }
+  /* ---------- som (CC.Sound) ---------- */
   function sfx(n, fromNet) {
     if (G && G.net === 'host' && !fromNet) G.ev.push({ t: 's', n: n });
-    switch (n) {
-      case 'pick': tone(520, 0.06, 'triangle', 0.05); break;
-      case 'put': tone(330, 0.07, 'triangle', 0.05); break;
-      case 'chopdone': tone(900, 0.08, 'square', 0.04); break;
-      case 'trash': tone(200, 0.12, 'sawtooth', 0.04, 80); break;
-      case 'start': tone(260, 0.12, 'sine', 0.04); break;
-      case 'done': tone(660, 0.12, 'sine', 0.06); setTimeout(function () { tone(880, 0.16, 'sine', 0.06); }, 110); break;
-      case 'warn': tone(440, 0.1, 'square', 0.05); setTimeout(function () { tone(440, 0.1, 'square', 0.05); }, 160); break;
-      case 'burn': tone(150, 0.4, 'sawtooth', 0.06, 60); break;
-      case 'ding': tone(784, 0.1, 'sine', 0.07); setTimeout(function () { tone(1175, 0.25, 'sine', 0.07); }, 100); break;
-      case 'wrong': tone(160, 0.25, 'square', 0.05); break;
-      case 'order': tone(600, 0.06, 'sine', 0.04); break;
-      case 'fail': tone(220, 0.3, 'sawtooth', 0.05, 110); break;
-      case 'dash': tone(300, 0.1, 'sawtooth', 0.025, 700); break;
-      case 'win': [523, 659, 784, 1047].forEach(function (f, i) { setTimeout(function () { tone(f, 0.2, 'triangle', 0.07); }, i * 120); }); break;
-      case 'lose': [400, 330, 260].forEach(function (f, i) { setTimeout(function () { tone(f, 0.25, 'triangle', 0.06); }, i * 150); }); break;
-    }
+    CC.Sound.sfx(n);
   }
   E.sfx = sfx;
 })(window.CC);

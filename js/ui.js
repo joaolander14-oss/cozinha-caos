@@ -54,15 +54,81 @@
   const Stars = function (p) { return div({ className: 'stars' }, [1, 2, 3].map(function (i) { return span({ key: i, className: i <= p.n ? 'on' : '' }, '★'); })); };
   function ChefIcon(p) { return span({ className: 'chefico', style: { background: p.skin.color } }, p.skin.hat === 'toque' ? '👨‍🍳' : p.skin.hat); }
 
+  const WCOL = ['#2ecc71', '#3498db', '#e67e22', '#9b59b6'];
   function Ticket(p) {
     const o = p.o, d = DISHES[o.dish], f = o.t / o.tmax;
     const col = f > 0.5 ? '#4cd964' : f > 0.25 ? '#f1c40f' : '#e74c3c';
-    return div({ className: 'ticket' + (f < 0.25 ? ' urgent' : '') + (o.vip ? ' vip' : ''), title: 'Clique para ver a receita', onClick: p.onClick },
+    const multi = p.nwin > 1;
+    return div({ className: 'ticket' + (f < 0.25 ? ' urgent' : '') + (o.vip ? ' vip' : ''), onClick: p.onClick,
+      onMouseEnter: function (e) { p.onHover(o.dish, e.currentTarget.getBoundingClientRect()); }, onMouseLeave: function () { p.onHover(null); } },
+      multi ? div({ className: 'winbadge', style: { background: WCOL[(o.win || 0) % 4] } }, '🛎️ ' + CC.winName(p.lv, o.win || 0)) : null,
       div({ className: 'tk-head' }, h(Em, { e: d.e, size: 26 }), span({ className: 'tk-name' }, d.n), o.vip ? span({ className: 'vipb' }, '⭐x2') : null),
       div({ className: 'tk-parts' },
         d.parts.map(function (id, i) { return span({ key: i, title: ITEMS[id].n, className: 'chip' }, h(Em, { e: ITEMS[id].e, size: 17 })); }),
         o.seas.map(function (s) { return span({ key: s, title: ITEMS[s].n, className: 'chip seas' }, h(Em, { e: ITEMS[s].e, size: 15 }), span({ className: 'sn' }, ITEMS[s].n)); })),
       div({ className: 'tk-bar' }, div({ style: { width: (f * 100) + '%', background: col } })));
+  }
+
+  /* guia rápido: aparece ao passar o mouse sobre um pedido */
+  function QuickGuide(p) {
+    const d = DISHES[p.dish];
+    if (!d) return null;
+    const seen = {}, steps = [];
+    d.parts.forEach(function (pt) { CC.steps(pt).forEach(function (s) { const k = s.n + s.txt; if (!seen[k]) { seen[k] = 1; steps.push(s); } }); });
+    const left = Math.max(8, Math.min(window.innerWidth - 400, p.rect.left)), top = p.rect.bottom + 6;
+    return div({ className: 'qguide', style: { left: left, top: top } },
+      div({ className: 'dt-head' }, h(Em, { e: d.e, size: 34 }), div(null, h('h3', null, d.n), div({ className: 'sub' }, CC.CATS[d.cat][0] + ' • 💰 ' + d.price))),
+      h('ol', { className: 'steps tight' }, steps.slice(0, 14).map(function (s, i) { return h('li', { key: i }, h(Em, { e: s.e, size: 16 }), ' ', span({ className: 'sname' }, s.n), span({ className: 'stxt' }, s.txt)); }),
+        h('li', { className: 'final' }, '🍽️ Prato: ', d.parts.map(function (id, i) { return h(Em, { key: i, e: ITEMS[id].e, size: 16 }); }), d.seas.length ? span({ className: 'opt' }, ' (tempero opcional)') : null)));
+  }
+
+  /* computador: pedir estoque ao caminhão e comprar melhorias na loja */
+  function Computer(p) {
+    const sn = p.snap, up = sn.up || {};
+    const ts = useState(sn.stockOn ? 'stock' : 'shop'), tab = ts[0], setTab = ts[1];
+    const ss = useState([]), slots = ss[0], setSlots = ss[1];
+    const qs = useState(''), q = qs[0], setQ = qs[1];
+    const maxB = Math.min(6, 4 + (up.boxes || 0)), delay = Math.round(26 * Math.pow(0.88, up.express || 0));
+    const ids = (sn.stockIds || []).slice().sort(function (a, b) { return ITEMS[a].n < ITEMS[b].n ? -1 : 1; });
+    const shown = ids.filter(function (id) { return !q || ITEMS[id].n.toLowerCase().indexOf(q.toLowerCase()) >= 0; });
+    const cost = slots.reduce(function (s, id) { return s + CC.priceOf(id) * 4; }, 0);
+    const add = function (id) { if (slots.length < maxB) { setSlots(slots.concat([id])); CC.Sound.sfx('click'); } };
+    const refill = function () {
+      const low = ids.slice().sort(function (a, b) { return (sn.stock[a] || 0) - (sn.stock[b] || 0); }).slice(0, maxB);
+      setSlots(low);
+    };
+    const stockTab = !sn.stockOn ? div({ className: 'empty' }, 'Esta fase tem estoque ilimitado. Use a aba Loja para comprar melhorias!') : div({ className: 'pccols' },
+      div({ className: 'pcleft' },
+        input({ className: 'search', placeholder: '🔎 Buscar ingrediente…', value: q, onChange: function (e) { setQ(e.target.value); } }),
+        div({ className: 'ingrid' }, shown.map(function (id) {
+          const n = sn.stock[id] || 0;
+          return div({ key: id, className: 'ingcard' + (n <= 0 ? ' zero' : n < 3 ? ' low' : ''), onClick: function () { add(id); } },
+            h(Em, { e: ITEMS[id].e, size: 26 }), div({ className: 'ingn' }, ITEMS[id].n), div({ className: 'ings' }, 'Estoque: ', span({ className: 'sv' }, n)), div({ className: 'ingp' }, '💵 ' + CC.priceOf(id) * 4 + ' /caixa'));
+        }))),
+      div({ className: 'pcright' },
+        h('h3', null, '🚚 Novo pedido (' + slots.length + '/' + maxB + ' caixas)'),
+        div({ className: 'sub pad' }, 'Cada caixa traz 4 unidades do ingrediente escolhido. O caminhão leva ~' + delay + 's.'),
+        div({ className: 'slots' }, Array.from({ length: maxB }, function (_, i) {
+          const id = slots[i];
+          return div({ key: i, className: 'slot' + (id ? ' full' : '') }, id ? [h(Em, { key: 'e', e: ITEMS[id].e, size: 28 }), div({ key: 'n', className: 'ingn' }, ITEMS[id].n), div({ key: 'p', className: 'ingp' }, '4× • 💵 ' + CC.priceOf(id) * 4),
+            button({ key: 'x', className: 'xbtn', onClick: function () { setSlots(slots.filter(function (_, j) { return j !== i; })); } }, '✕')] : div({ className: 'sub' }, 'Caixa ' + (i + 1) + ' vazia'));
+        })),
+        div({ className: 'row' }, button({ className: 'btn sm', onClick: refill }, '🧠 Repor os mais baixos'), button({ className: 'btn sm', onClick: function () { setSlots([]); } }, '🧹 Limpar')),
+        div({ className: 'total' }, 'Total: 💵 ', span({ className: 'v' }, cost), '  •  Saldo: ', span({ className: 'v' }, sn.cash)),
+        button({ className: 'btn big', disabled: !slots.length || cost > sn.cash, onClick: function () { p.onOrder(slots); setSlots([]); } }, cost > sn.cash ? 'Saldo insuficiente' : '📦 Pedir caminhão'),
+        sn.trucks && sn.trucks.length ? div({ className: 'trucks' }, h('h4', null, 'A caminho'), sn.trucks.map(function (t, i) { return div({ key: i }, '🚚 ' + t.n + ' caixas — chega em ' + Math.ceil(t.t) + 's'); })) : null));
+    const shopTab = div({ className: 'shopgrid' }, Object.keys(CC.SHOP).map(function (k) {
+      const it = CC.SHOP[k], lvl = up[k] || 0, max = it.cost.length, maxed = lvl >= max, price = it.cost[lvl];
+      return div({ key: k, className: 'shopcard' + (maxed ? ' maxed' : '') },
+        div({ className: 'shophead' }, h(Em, { e: it.e, size: 30 }), div(null, div({ className: 'ingn' }, it.n), div({ className: 'pips' }, Array.from({ length: max }, function (_, i) { return span({ key: i, className: i < lvl ? 'on' : '' }, '●'); })))),
+        div({ className: 'sub' }, it.d),
+        button({ className: 'btn sm', disabled: maxed || price > sn.cash, onClick: function () { p.onBuy(k); } }, maxed ? 'Máximo' : '💵 ' + price + ' — Comprar'));
+    }));
+    return div({ className: 'overlay' }, div({ className: 'pcwrap' },
+      div({ className: 'topbar' }, h('h1', null, '💻 Computador da cozinha'), div({ className: 'cash' }, '💵 ', sn.cash),
+        div({ className: 'seg' }, [['stock', '📦 Estoque'], ['shop', '🛒 Loja']].map(function (t) { return button({ key: t[0], className: tab === t[0] ? 'on' : '', onClick: function () { setTab(t[0]); } }, t[1]); })),
+        button({ className: 'btn sm', onClick: p.onClose }, '✖ Fechar')),
+      tab === 'stock' ? stockTab : shopTab));
   }
 
   /* ---------- tela do jogo ---------- */
@@ -75,6 +141,9 @@
     const bk = useState(null), book = bk[0], setBook = bk[1];
     const bookRef = useRef(null); bookRef.current = book;
     const online = mode !== 'local';
+    const ts2 = useState(null), tip = ts2[0], setTip = ts2[1];
+    const pcs = useState(false), pcOpen = pcs[0], setPcOpen = pcs[1];
+    const pcRef = useRef(false); pcRef.current = pcOpen;
 
     useEffect(function () {
       sv.current = false; pausedRef.current = false; setPaused(false);
@@ -96,14 +165,20 @@
         if (bookRef.current) { setBook(null); pausedRef.current = false; CC.Engine.setPaused(false); setPaused(false); }
         else { pausedRef.current = true; CC.Engine.setPaused(true); setPaused(true); setBook(true); }
       };
+      const openPc = function () { if (pcRef.current) return; pcRef.current = true; setPcOpen(true); if (mode === 'local') { pausedRef.current = true; CC.Engine.setPaused(true); setPaused(true); } };
+      CC.Engine.onPc = function (idx) { if (mode === 'host' && idx !== 0) MP.toPlayer(idx, { t: 'pc' }); else openPc(); };
+      if (mode === 'guest') MP.on('pc', openPc);
       const iv = setInterval(function () {
         const s = CC.Engine.snapshot(); setSnap(s);
         if (s && s.over && s.result && !sv.current) { sv.current = true; const g = CC.Engine.get(); p.onFinish(lv, Object.assign({ nplayers: g ? g.players.length : 1 }, s.result), mode); }
       }, 100);
-      return function () { clearInterval(iv); CC.onPauseKey = null; CC.onBookKey = null; CC.Engine.stop(); };
+      return function () { clearInterval(iv); CC.onPauseKey = null; CC.onBookKey = null; CC.Engine.onPc = null; if (mode === 'guest') MP.on('pc', null); CC.Engine.stop(); };
     }, [lv.id, run, p.players, mode]);
 
     const toggle = function (v) { pausedRef.current = v; CC.Engine.setPaused(v); setPaused(v); };
+    const closePc = function () { pcRef.current = false; setPcOpen(false); if (mode === 'local') toggle(false); };
+    const doOrder = function (ids) { if (mode === 'guest') MP.send({ t: 'cmd', c: 'order', ids: ids }); else CC.Engine.pcOrder(0, ids); };
+    const doBuy = function (id) { if (mode === 'guest') MP.send({ t: 'cmd', c: 'buy', id: id }); else CC.Engine.shopBuy(0, id); };
     const res = snap && snap.result;
     const next = typeof lv.id === 'number' ? CC.LEVELS[CC.LEVELS.indexOf(lv) + 1] : null;
     const pl = online ? MP.players : null;
@@ -114,21 +189,25 @@
           span({ className: 'lvn' }, h(Em, { e: lv.e, size: 20 }), ' ', lv.nome),
           div({ className: 'stat time' }, lv.practice ? '∞ Treino' : lv.endless ? (snap ? '♾️ ' + fmt(snap.time) : '♾️') : '⏱ ' + (snap ? fmt(snap.left) : '')),
           div({ className: 'stat score' }, '💰 ', snap ? snap.score : 0),
+          snap && (snap.stockOn || snap.shopOn) ? div({ className: 'stat cashst', title: 'Dinheiro: use o computador 💻 para estoque e loja' }, '💵 ', snap.cash) : null,
+          snap && snap.stockOn && snap.trucks && snap.trucks.length ? div({ className: 'stat' }, '🚚 ' + Math.ceil(Math.min.apply(null, snap.trucks.map(function (t) { return t.t; }))) + 's') : null,
           lv.endless && snap ? div({ className: 'stat lives' }, '❤️'.repeat(Math.max(0, snap.lives)) + '🖤'.repeat(Math.max(0, 3 - snap.lives))) : null,
           snap && snap.combo > 1 ? div({ className: 'stat combo' }, '🔥 x' + snap.combo) : null,
           pl ? div({ className: 'plist' }, pl.map(function (x, i) { return span({ key: i, className: 'pl' + (i === MP.myIdx ? ' me' : ''), title: x.name }, h(ChefIcon, { skin: x.skin || { color: CC.COLS[i], hat: 'toque' } })); })) : null),
         div({ className: 'hud-r' },
           button({ className: 'btn sm', onClick: function () { toggle(true); setBook(true); } }, '📖 Receitas'), ' ', button({ className: 'btn sm', onClick: function () { toggle(true); } }, online ? '☰ Menu' : '⏸ Pausa'))),
-      div({ className: 'tickets' }, snap ? snap.orders.map(function (o) { return h(Ticket, { key: o.id, o: o, onClick: function () { toggle(true); setBook(o.dish); } }); }) : null,
+      div({ className: 'tickets' }, snap ? snap.orders.map(function (o) { return h(Ticket, { key: o.id, o: o, lv: lv, nwin: snap.nwin, onHover: function (d, r) { setTip(d ? { dish: d, rect: r } : null); }, onClick: function () { setTip(null); toggle(true); setBook(o.dish); } }); }) : null,
         snap && !snap.orders.length ? div({ className: 'noorder' }, 'Aguardando pedidos…') : null),
       div({ className: 'stage' }, canvas({ ref: cref, className: 'cv' }),
         div({ className: 'toasts' }, snap ? snap.toasts.map(function (t) { return div({ key: t.id, className: 'toast ' + t.kind }, t.txt); }) : null),
         snap && snap.countdown > 0 ? div({ className: 'tipbox' }, lv.tip) : null),
       div({ className: 'ctrl-hint' }, online || nlocal === 1
-        ? 'WASD/Setas mover • Espaço/Enter pegar-colocar • E (segure) cortar/lavar/ralar • Q dash • B receitas • P menu • 🎮 controle também funciona'
+        ? 'WASD/Setas mover • Espaço/Enter pegar-colocar • E (segure) cortar/lavar/ralar • Q dash • B receitas • 💻 computador: estoque e loja • passe o mouse num pedido para ver a receita'
         : 'P1: WASD • Espaço • E • Q   |   P2: Setas • Enter • Shift dir. • /   |   P3: IJKL • U • O • Y   |   P4: Num 8456 • 0 • Num. • NumEnter   |   🎮 controles'),
+      tip && !book && !pcOpen ? h(QuickGuide, { dish: tip.dish, rect: tip.rect }) : null,
+      pcOpen && snap && !res ? h(Computer, { snap: snap, onOrder: doOrder, onBuy: doBuy, onClose: closePc }) : null,
       book && !res ? div({ className: 'overlay' }, div({ className: 'bookwrap' }, h(Book, { initial: book, onBack: function () { setBook(null); toggle(false); } }))) : null,
-      paused && !book && !res ? div({ className: 'overlay' }, div({ className: 'modal' },
+      paused && !book && !pcOpen && !res ? div({ className: 'overlay' }, div({ className: 'modal' },
         h('h2', null, online ? '☰ Menu (o jogo continua)' : '⏸ Pausado'),
         div({ className: 'tipline' }, lv.tip),
         div({ className: 'row' },
@@ -181,8 +260,10 @@
     return div({ className: 'screen' },
       div({ className: 'topbar' }, button({ className: 'btn sm', onClick: p.onBack }, '◀ Menu'), h('h1', null, 'Modos de jogo'), h(PlayersSeg, { save: sv, setPlayers: p.setPlayers })),
       div({ className: 'lvgrid' },
-        card('♾️', 'Modo Infinito', 'Sem relógio. 3 vidas ❤️. Os pedidos aceleram até o caos.', 'Recorde: ' + (sv.stats.endlessBest || 0), function () { p.onPlay(CC.makeEndless()); }, '#8e44ad'),
+        card('♾️', 'Modo Infinito', 'Sem relógio, 3 vidas ❤️, 2 janelas, estoque e loja. Os pedidos aceleram até o caos.', 'Recorde: ' + (sv.stats.endlessBest || 0), function () { p.onPlay(CC.makeEndless()); }, '#8e44ad'),
         card('📅', 'Desafio do Dia', 'Cardápio e cozinha iguais para todos hoje.', sv.daily[dk] ? 'Melhor de hoje: ' + sv.daily[dk] : 'Ainda não jogado hoje', function () { p.onPlay(CC.makeDaily()); }, '#e67e22'),
+        card('🍟', 'Fast Food', '3 janelas (Balcão, Drive-thru, Delivery): cada pedido vai na janela certa. Estoque e loja.', 'Cardápio de fast food • 5 min', function () { p.onPlay(CC.makeFastFood()); }, '#e74c3c'),
+        card('🪟', 'Salão de Restaurante', 'Cada mesa é uma janela. Estoque que acaba, caminhão de entrega e loja de melhorias.', '3 mesas • 5 min', function () { p.onPlay(CC.makeSalon()); }, '#2c7a7b'),
         card('🏪', 'Meu Restaurante', 'Escolha os pratos, o ritmo, o tempo e o layout.', 'Monte seu cardápio', p.onCustom, '#2980b9'),
         card('🌐', 'Online (até 4 chefs)', 'Crie uma sala ou entre com um código.', 'Cozinhe com amigos pela internet', p.onOnline, '#16a085'),
         card('🧪', 'Treino Livre', 'Todos os pratos e equipamentos, sem relógio.', '', function () { p.onPlay(CC.LEVELS[CC.LEVELS.length - 1]); }, '#34495e')));
@@ -209,6 +290,10 @@
           h('label', null, 'Duração: ', sel('tempo', [[0, '♾️ Infinito (3 vidas)'], [120, '2 min'], [180, '3 min'], [240, '4 min'], [300, '5 min'], [480, '8 min']])),
           h('label', null, 'Ritmo: ', sel('pace', [[0, '😌 Tranquilo'], [1, '🙂 Normal'], [2, '😰 Frenético']])),
           h('label', null, 'Layout: ', sel('layout', [['ilha', 'Ilha central'], ['livre', 'Aberta'], ['divisao', 'Dividida']])),
+          h('label', null, 'Janelas de entrega: ', sel('windows', [[1, '1 janela'], [2, '2 janelas'], [3, '3 janelas'], [4, '4 janelas']])),
+          h('label', null, 'Estilo das janelas: ', sel('winStyle', [['fast', 'Balcão / Drive-thru / Delivery'], ['salao', 'Mesas 1, 2, 3…']])),
+          h('label', { className: 'chk' }, input({ type: 'checkbox', checked: !!cfg.stock, onChange: function (e) { set('stock', e.target.checked); } }), ' Estoque limitado + caminhão'),
+          h('label', { className: 'chk' }, input({ type: 'checkbox', checked: cfg.shop !== false, onChange: function (e) { set('shop', e.target.checked); } }), ' Loja de melhorias'),
           h('label', null, 'Pedidos com tempero: ', sel('seasP', [[0, 'Nunca'], [0.3, 'Às vezes'], [0.6, 'Quase sempre']])),
           div({ className: 'row' }, button({ className: 'btn sm', onClick: randomPick }, '🎲 12 aleatórios'), button({ className: 'btn sm', onClick: function () { set('ids', []); } }, '🧹 Limpar')),
           div({ className: 'sub pad' }, 'As cozinhas crescem automaticamente para caber todos os ingredientes e equipamentos do seu cardápio.')),
@@ -279,7 +364,7 @@
     const camp = CC.LEVELS.filter(function (l) { return !l.practice; });
     const startIt = function () {
       let lv;
-      if (mode === 'endless') lv = CC.makeEndless(); else if (mode === 'daily') lv = CC.makeDaily(); else if (mode === 'train') lv = CC.LEVELS[CC.LEVELS.length - 1];
+      if (mode === 'endless') lv = CC.makeEndless(); else if (mode === 'fastfood') lv = CC.makeFastFood(); else if (mode === 'salon') lv = CC.makeSalon(); else if (mode === 'daily') lv = CC.makeDaily(); else if (mode === 'train') lv = CC.LEVELS[CC.LEVELS.length - 1];
       else lv = camp.find(function (l) { return 'c' + l.id === mode; });
       p.onHostStart(lv);
     };
@@ -294,7 +379,7 @@
         div({ className: 'st-card' }, h('h3', null, '🎮 Partida'),
           host ? div(null,
             h('label', null, 'Modo/fase: ', select({ value: mode, onChange: function (e) { setMode(e.target.value); } },
-              option({ value: 'endless' }, '♾️ Modo Infinito'), option({ value: 'daily' }, '📅 Desafio do Dia'), option({ value: 'train' }, '🧪 Treino Livre'),
+              option({ value: 'endless' }, '♾️ Modo Infinito'), option({ value: 'fastfood' }, '🍟 Fast Food (3 janelas)'), option({ value: 'salon' }, '🪟 Salão (3 mesas)'), option({ value: 'daily' }, '📅 Desafio do Dia'), option({ value: 'train' }, '🧪 Treino Livre'),
               camp.map(function (l) { return option({ key: l.id, value: 'c' + l.id }, l.id + '. ' + l.nome); }))),
             div({ className: 'sub pad' }, 'Todos cozinham juntos na mesma cozinha. Todas as fases estão liberadas online.'),
             button({ className: 'btn big', onClick: startIt }, '▶ Começar partida'))
@@ -339,7 +424,7 @@
         })));
     } else {
       body = div({ className: 'stations bscroll' },
-        div({ className: 'st-card' }, h('h3', null, '🥕 Ingredientes e cortes (' + Object.keys(CC.ING).length + ')'), Object.keys(CC.ING).map(function (k) { const g = CC.ING[k]; return div({ key: k, className: 'rcp' }, h(Em, { e: g.e, size: 20 }), span({ className: 'rn' }, g.n), g.chop ? span({ className: 'rt' }, '✂️ ' + g.chop + ' (' + g.sec + 's)' + (g.grate ? ' • 🧀 ' + g.grate : '')) : g.grate ? span({ className: 'rt' }, '🧀 ' + g.grate) : span({ className: 'rt' }, 'sem corte')); })),
+        div({ className: 'st-card' }, h('h3', null, '🥕 Ingredientes e cortes (' + Object.keys(CC.ING).length + ')'), Object.keys(CC.ING).map(function (k) { const g = CC.ING[k]; return div({ key: k, className: 'rcp' }, h(Em, { e: g.e, size: 20 }), span({ className: 'rn' }, g.n), (function () { const cuts = Object.keys(CC.CUTS).filter(function (c) { return g[CC.CUTS[c].adj]; }).map(function (c) { return CC.CUTS[c].e + ' ' + g[CC.CUTS[c].adj] + ' (' + g[CC.CUTS[c].sec] + 's)'; }); return span({ className: 'rt' }, cuts.length ? cuts.join(' • ') : 'sem corte'); })()); })),
         div({ className: 'st-card' }, h('h3', null, '🧂 Temperos'), div({ className: 'sub pad' }, 'Pegue o frasco e use no prato (ou aproxime o prato da caixa). Alguns pedidos exigem tempero!'),
           Object.keys(CC.SEAS).map(function (k) { const g = CC.SEAS[k]; return div({ key: k, className: 'rcp' }, h(Em, { e: g.e, size: 20 }), span({ className: 'rn' }, g.n)); })));
     }

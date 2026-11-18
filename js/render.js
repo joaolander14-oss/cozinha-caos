@@ -3,6 +3,8 @@
   'use strict';
   const ITEMS = CC.ITEMS, TS = CC.TS || 64;
   const R = CC.Render = {};
+  let curG = null;
+  const WCOL = ['#2ecc71', '#3498db', '#e67e22', '#9b59b6'];
   const FONT = '"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif';
 
   function rr(c, x, y, w, h, r) {
@@ -48,6 +50,17 @@
     else if (h.plate) drawPlate(c, h, x, y, size, false);
     else if (h.dirty) drawPlate(c, null, x, y, size, true);
     else if (h.shaker) drawShaker(c, h.shaker, x, y, size);
+    else if (h.box) drawBox(c, h.box, h.n, x, y, size);
+  }
+  function drawBox(c, id, n, x, y, size) {
+    c.save();
+    c.fillStyle = '#b08850'; c.strokeStyle = '#6b4a22'; c.lineWidth = 2;
+    rr(c, x - size * 0.42, y - size * 0.34, size * 0.84, size * 0.68, 5); c.fill(); c.stroke();
+    c.fillStyle = '#d2ad6b'; c.fillRect(x - size * 0.42, y - size * 0.34, size * 0.84, size * 0.14);
+    c.fillStyle = '#000'; emoji(c, ITEMS[id] ? ITEMS[id].e : '📦', x, y + 1, size * 0.42);
+    c.font = 'bold 10px sans-serif'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 3; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    c.strokeText('x' + n, x + size * 0.28, y + size * 0.34); c.fillText('x' + n, x + size * 0.28, y + size * 0.34);
+    c.restore();
   }
   function drawShaker(c, id, x, y, size) {
     const s = CC.SEAS[id];
@@ -89,6 +102,33 @@
         if (t.prog > 0 && typeof t.thing === 'string') bar(c, x + 8, y + TS - 14, TS - 16, t.prog, '#4cd964');
         break;
       }
+      case 'mortar': case 'juicer': case 'peeler': {
+        counterBase(c, x, y, '#bcaaa4');
+        if (t.k === 'mortar') { c.fillStyle = '#8d8d95'; c.beginPath(); c.ellipse(cx, cy + 6, 20, 13, 0, 0, Math.PI); c.fill(); c.fillRect(cx - 20, cy + 4, 40, 4); c.fillStyle = '#5f5f66'; c.beginPath(); c.ellipse(cx, cy + 5, 20, 5, 0, 0, 7); c.fill(); }
+        else if (t.k === 'juicer') { c.fillStyle = '#ff9f43'; c.beginPath(); c.moveTo(cx - 17, cy + 4); c.lineTo(cx + 17, cy + 4); c.lineTo(cx + 6, cy - 14); c.lineTo(cx - 6, cy - 14); c.closePath(); c.fill(); c.fillStyle = '#cfd8dc'; rr(c, cx - 20, cy + 4, 40, 8, 3); c.fill(); }
+        else { c.fillStyle = '#cfd8dc'; rr(c, cx - 22, cy + 2, 44, 9, 4); c.fill(); c.fillStyle = '#78909c'; c.fillRect(cx - 14, cy - 4, 28, 3); }
+        if (!t.thing) { c.globalAlpha = 0.6; emoji(c, CC.CUTS[t.k].e, cx, cy - 8, 20); c.globalAlpha = 1; } else drawHeld(c, t.thing, cx, cy - 6, 34);
+        if (t.prog > 0 && typeof t.thing === 'string') bar(c, x + 8, y + TS - 14, TS - 16, t.prog, '#4cd964');
+        break;
+      }
+      case 'dock': {
+        counterBase(c, x, y, '#ffcc80');
+        if (t.flash > 0) { c.fillStyle = 'rgba(255,255,255,' + Math.min(0.6, t.flash) + ')'; c.fillRect(x, y, TS, TS); }
+        const nb = (t.boxes || []).length;
+        for (let i = 0; i < Math.min(nb, 4); i++) drawBox(c, t.boxes[i].id, t.boxes[i].n, cx + (i % 2 ? 8 : -8), cy + 6 - i * 6, 26);
+        if (!nb) { c.globalAlpha = 0.55; emoji(c, '🚚', cx, cy, 30); c.globalAlpha = 1; }
+        c.font = 'bold 12px sans-serif'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 3; c.textAlign = 'center'; if (nb) { c.strokeText('x' + nb, x + TS - 12, y + 14); c.fillText('x' + nb, x + TS - 12, y + 14); }
+        break;
+      }
+      case 'pc': {
+        counterBase(c, x, y, '#90a4ae');
+        c.fillStyle = '#263238'; rr(c, x + 9, y + 8, TS - 18, TS - 26, 4); c.fill();
+        c.fillStyle = '#1de9b6'; rr(c, x + 12, y + 11, TS - 24, TS - 32, 3); c.fill();
+        c.fillStyle = '#004d40'; for (let i = 0; i < 3; i++) c.fillRect(x + 15, y + 15 + i * 5, 14 + (i * 7) % 12, 2);
+        c.fillStyle = '#546e7a'; c.fillRect(cx - 4, y + TS - 18, 8, 5); c.fillRect(cx - 12, y + TS - 13, 24, 4);
+        if (curG && curG.stockOn && Object.keys(curG.stock || {}).some(function (k) { return curG.stock[k] <= 0; }) && Math.floor(performance.now() / 400) % 2) emoji(c, '❗', x + TS - 12, y + 12, 18);
+        break;
+      }
       case 'crate': {
         const s = CC.SEAS[t.id];
         c.fillStyle = '#5a4128'; c.fillRect(x, y, TS, TS);
@@ -104,6 +144,11 @@
         c.font = 'bold 9px sans-serif'; c.fillStyle = 'rgba(255,255,255,.9)'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
         const nm = (s ? s.n : CC.ING[t.id].n).replace('Queijo ralado', 'Q. ralado').replace('Calda de chocolate', 'Calda').replace('Molho picante', 'M. picante');
         c.fillText(nm, cx, y + TS - 5);
+        if (curG && curG.stockOn && !s) {
+          const n = (curG.stock && curG.stock[t.id]) | 0;
+          c.fillStyle = n > 0 ? (n < 3 ? '#e67e22' : '#27ae60') : '#c0392b'; c.beginPath(); c.arc(x + TS - 12, y + 12, 10, 0, 7); c.fill();
+          c.fillStyle = '#fff'; c.font = 'bold 11px sans-serif'; c.textBaseline = 'middle'; c.fillText(String(n), x + TS - 12, y + 12);
+        }
         break;
       }
       case 'trash':
@@ -126,11 +171,17 @@
         if (!t.dirty) { c.globalAlpha = 0.4; emoji(c, '🍽️', cx, cy, 28); c.globalAlpha = 1; }
         c.font = 'bold 12px sans-serif'; c.fillStyle = '#fff'; c.textAlign = 'center'; if (t.dirty) c.fillText('x' + t.dirty, cx + 20, y + 14); break;
       case 'serve': {
-        const f = t.flash > 0 ? t.flash : 0;
-        c.fillStyle = f > 0 ? '#58d68d' : '#2ecc71'; c.fillRect(x, y, TS, TS);
-        c.fillStyle = '#1e8449'; rr(c, x + 4, y + 4, TS - 8, TS - 8, 6); c.fill();
-        c.fillStyle = 'rgba(255,255,255,.25)'; for (let i = 0; i < 4; i++) c.fillRect(x + 8 + i * 13, y + 8, 6, TS - 16);
-        emoji(c, '🛎️', cx, cy, 34); break;
+        const f = t.flash > 0 ? t.flash : 0, multi = curG && curG.nwin > 1, wc = multi ? WCOL[(t.win || 0) % 4] : '#2ecc71';
+        c.fillStyle = f > 0 ? '#ffffff' : wc; c.fillRect(x, y, TS, TS);
+        c.fillStyle = 'rgba(0,0,0,.35)'; rr(c, x + 4, y + 4, TS - 8, TS - 8, 6); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.22)'; for (let i = 0; i < 4; i++) c.fillRect(x + 8 + i * 13, y + 8, 6, TS - 16);
+        emoji(c, '🛎️', cx, cy - 3, 30);
+        if (multi) {
+          const nm = ((curG.lv.winNames && curG.lv.winNames[t.win || 0]) || String.fromCharCode(65 + (t.win || 0)));
+          c.font = 'bold 10px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 3;
+          c.strokeText(nm, cx, y + TS - 5); c.fillText(nm, cx, y + TS - 5);
+        }
+        break;
       }
       case 'app': drawApp(c, t, x, y, cx, cy, time); break;
     }
@@ -234,8 +285,16 @@
     const hx = x + p.dx * 24, hy = y + 4 + p.dy * 22;
     c.fillStyle = '#ffd7b0'; c.strokeStyle = 'rgba(0,0,0,.4)'; c.lineWidth = 1.5;
     c.beginPath(); c.arc(x + p.dx * 17 - p.dy * 9, y + 6 + p.dy * 14 + p.dx * 0, 4.5, 0, 7); c.arc(x + p.dx * 17 + p.dy * 9, y + 6 + p.dy * 14, 4.5, 0, 7); c.fill(); c.stroke();
-    if (p.hold) drawHeld(c, p.hold, hx, hy - 6, 34);
-    if (p.chopping) { c.save(); c.translate(hx, hy - 12); c.rotate(Math.sin(time * 30) * 0.5); emoji(c, '🔪', 0, 0, 22); c.restore(); }
+    const tr = p.tray || [];
+    if (curG && curG.up && curG.up.cart) emoji(c, '🛒', hx, hy + 6, 30);
+    for (let i = 0; i < tr.length; i++) drawHeld(c, tr[i], hx, hy - 6 - i * 5, 34);
+    if (p.hold) drawHeld(c, p.hold, hx, hy - 6 - tr.length * 5, 34);
+    if (p.chopping) {
+      const ak = p.actKind || 'board', AE = { board: '🔪', grater: '🧀', mortar: '🔨', juicer: '🍊', peeler: '🪒', wash: '🧽' };
+      c.save(); c.translate(hx, hy - 12);
+      if (ak === 'wash') { c.translate(Math.sin(time * 18) * 6, 0); c.rotate(Math.sin(time * 18) * 0.25); emoji(c, '🧽', 0, 0, 24); c.restore(); emoji(c, '💦', hx + 12, hy - 22 + Math.sin(time * 12) * 3, 16); emoji(c, '🫧', hx - 12, hy - 20 - Math.abs(Math.sin(time * 9)) * 6, 14); }
+      else { c.rotate(Math.sin(time * 30) * 0.5); emoji(c, AE[ak] || '🔪', 0, 0, 22); c.restore(); }
+    }
     c.restore();
     // etiqueta
     c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 3;
@@ -247,6 +306,7 @@
   }
 
   R.draw = function (cvs, G, time) {
+    curG = G;
     const W = G.W * TS, H = G.H * TS;
     if (cvs.width !== W) { cvs.width = W; cvs.height = H; }
     const c = cvs.getContext('2d');
