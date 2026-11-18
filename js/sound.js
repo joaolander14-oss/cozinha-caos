@@ -67,6 +67,7 @@
       case 'buy': tone(523, 0.08, 'triangle', 0.06); tone(784, 0.1, 'triangle', 0.06, 0, 0.08); tone(1047, 0.22, 'triangle', 0.06, 0, 0.16); break;
       case 'nobuy': tone(180, 0.18, 'square', 0.05); break;
       case 'click': tone(700, 0.04, 'square', 0.03); break;
+      case 'bump': tone(120, 0.14, 'square', 0.07, 60); noise('lowpass', 700, 1, 0.12, 0.06); break;
       case 'swat': noise('bandpass', 1500, 1, 0.09, 0.06, 500); break;
       case 'squish': noise('lowpass', 900, 1.5, 0.12, 0.08, 200); tone(180, 0.1, 'sine', 0.05, 70); break;
       case 'bite': noise('bandpass', 2500, 4, 0.06, 0.05); tone(300, 0.05, 'square', 0.02); break;

@@ -51,6 +51,21 @@
     else if (h.dirty) drawPlate(c, null, x, y, size, true);
     else if (h.shaker) drawShaker(c, h.shaker, x, y, size);
     else if (h.box) drawBox(c, h.box, h.n, x, y, size);
+    else if (h.ut) drawUtensil(c, h, x, y, size);
+  }
+  function pips(c, u, x, y) {
+    const mx = CC.utMax(u.ut), n = Math.min(mx, 8);
+    for (let i = 0; i < n; i++) { c.fillStyle = i < u.uses ? '#e67e22' : 'rgba(255,255,255,.55)'; c.beginPath(); c.arc(x - i * 6, y, 2.3, 0, 7); c.fill(); }
+  }
+  function drawUtensil(c, u, x, y, size) {
+    const U = CC.UT[u.ut]; if (!U) return;
+    c.save();
+    c.fillStyle = u.dirty ? '#8a7a5a' : U.col; c.strokeStyle = 'rgba(0,0,0,.55)'; c.lineWidth = 2;
+    c.beginPath(); c.arc(x, y, size * 0.42, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = '#000'; emoji(c, U.e, x, y + 1, size * 0.5);
+    if (u.dirty) { c.fillStyle = 'rgba(90,60,30,.7)'; c.beginPath(); c.arc(x - 5, y - 4, 4, 0, 7); c.arc(x + 6, y + 5, 3.4, 0, 7); c.arc(x + 4, y - 7, 2.6, 0, 7); c.fill(); emoji(c, '🧼', x + size * 0.34, y - size * 0.3, 13); }
+    else pips(c, u, x + size * 0.3, y + size * 0.46);
+    c.restore();
   }
   function drawBox(c, id, n, x, y, size) {
     c.save();
@@ -120,6 +135,20 @@
         c.font = 'bold 12px sans-serif'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 3; c.textAlign = 'center'; if (nb) { c.strokeText('x' + nb, x + TS - 12, y + 14); c.fillText('x' + nb, x + TS - 12, y + 14); }
         break;
       }
+      case 'utrack': {
+        counterBase(c, x, y, '#cfd8dc');
+        c.fillStyle = '#90a4ae'; c.fillRect(x + 6, y + 30, TS - 12, 3); c.fillRect(x + 6, y + 50, TS - 12, 3);
+        const by = {}; (t.items || []).forEach(function (u) { by[u.ut] = (by[u.ut] || 0) + 1; });
+        Object.keys(by).forEach(function (k, i) {
+          const px = x + 15 + (i % 3) * 17, py = y + 24 + Math.floor(i / 3) * 20;
+          c.fillStyle = CC.UT[k].col; c.beginPath(); c.arc(px, py, 7, 0, 7); c.fill(); c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 1; c.stroke();
+          c.fillStyle = '#000'; emoji(c, CC.UT[k].e, px, py + 1, 9);
+          if (by[k] > 1) { c.font = 'bold 9px sans-serif'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.8)'; c.lineWidth = 2; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.strokeText(by[k], px + 7, py + 11); c.fillText(by[k], px + 7, py + 11); }
+        });
+        if (!(t.items || []).length) { c.globalAlpha = 0.5; emoji(c, '🍲', cx, cy, 24); c.globalAlpha = 1; }
+        c.font = 'bold 8px sans-serif'; c.fillStyle = '#263238'; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText('Utensílios', cx, y + TS - 4);
+        break;
+      }
       case 'pantry': {
         counterBase(c, x, y, '#d7b98a');
         c.fillStyle = '#7a5a3a'; rr(c, x + 6, y + 6, TS - 12, TS - 12, 8); c.fill(); c.strokeStyle = '#4a3420'; c.lineWidth = 3; c.stroke();
@@ -166,6 +195,7 @@
         emoji(c, '🚰', cx, cy - 4, 26);
         if (t.dirty > 0) { drawPlate(c, null, cx - 12, cy + 8, 22, true); c.font = 'bold 12px sans-serif'; c.fillStyle = '#fff'; c.textAlign = 'center'; c.fillText('x' + t.dirty, cx - 12, cy + 24); }
         if (t.clean > 0) { drawPlate(c, { items: [] }, cx + 14, cy + 8, 22, false); c.font = 'bold 12px sans-serif'; c.fillStyle = '#fff'; c.textAlign = 'center'; c.fillText('x' + t.clean, cx + 14, cy + 24); }
+        if (t.duts && t.duts.length) { emoji(c, '🍲', x + TS - 13, y + 15, 14); c.font = 'bold 10px sans-serif'; c.fillStyle = '#fff'; c.textAlign = 'center'; c.fillText('x' + t.duts.length, x + TS - 13, y + 32); }
         if (t.prog > 0) bar(c, x + 8, y + 3, TS - 16, t.prog, '#5ac8fa');
         break;
       }
@@ -210,6 +240,13 @@
     const k = t.kind, cooking = t.st === 'cook';
     c.fillStyle = '#3a3d45'; c.fillRect(x, y, TS, TS);
     c.fillStyle = '#4b4f59'; rr(c, x + 2, y + 2, TS - 4, TS - 6, 6); c.fill();
+    const UTd = curG && curG.utOn && CC.UT[k];
+    if (UTd && !t.ut) {
+      c.globalAlpha = 0.35; emoji(c, UTd.e, cx, cy - 4, 30); c.globalAlpha = 1;
+      c.font = 'bold 8px sans-serif'; c.fillStyle = '#ffab91'; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText('sem ' + UTd.n.toLowerCase().slice(0, 14), cx, y + TS - 7);
+      c.globalAlpha = 0.85; emoji(c, CC.APPS[k].e, x + 11, y + 11, 13); c.globalAlpha = 1;
+      return;
+    }
     switch (k) {
       case 'pot': case 'pan': {
         for (let i = 0; i < 2; i++) { c.strokeStyle = cooking ? '#ff7043' : '#222'; c.lineWidth = 3; c.beginPath(); c.arc(cx, cy, 24 - i * 8, 0, 7); c.stroke(); }
@@ -258,6 +295,10 @@
         appContents(c, t, cx, cy - 4, 24); break;
       }
     }
+    if (UTd && t.ut) {
+      if (t.ut.dirty) { c.fillStyle = 'rgba(90,60,30,.55)'; rr(c, x + 6, y + 8, TS - 12, TS - 20, 8); c.fill(); c.fillStyle = 'rgba(60,40,20,.8)'; c.beginPath(); c.arc(cx - 9, cy - 4, 5, 0, 7); c.arc(cx + 8, cy + 4, 4, 0, 7); c.fill(); emoji(c, '🧼', x + TS - 13, y + 13, 14); }
+      else pips(c, t.ut, x + TS - 7, y + TS - 9);
+    }
     // ícone do equipamento (pequeno) e barras
     c.globalAlpha = 0.85; emoji(c, CC.APPS[k].e, x + 11, y + 11, 13); c.globalAlpha = 1;
     if (cooking) bar(c, x + 6, y - 1, TS - 12, t.prog / t.rec.t, '#4cd964');
@@ -272,6 +313,7 @@
     c.save();
     // sombra
     c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(x, y + 17, 17, 7, 0, 0, 7); c.fill();
+    if (curG && curG.versus === 'teams') { c.strokeStyle = p.id % 2 ? '#448aff' : '#ff5252'; c.lineWidth = 4; c.beginPath(); c.ellipse(x, y + 16, 21, 9, 0, 0, 7); c.stroke(); }
     if (p.dash > 0) { c.globalAlpha = 0.3; c.fillStyle = p.color; c.beginPath(); c.arc(x - p.dx * 16, y - p.dy * 16, 16, 0, 7); c.fill(); c.globalAlpha = 1; }
     // corpo
     c.translate(0, -bob);
@@ -304,6 +346,7 @@
       else { c.rotate(Math.sin(time * 30) * 0.5); emoji(c, AE[ak] || '🔪', 0, 0, 22); c.restore(); }
     }
     c.restore();
+    if (p.stun > 0) { emoji(c, '💫', x + Math.sin(time * 12) * 8, y - 40, 20); }
     // etiqueta
     c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 3;
     c.strokeText(p.name, x, y + 29); c.fillText(p.name, x, y + 29);

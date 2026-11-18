@@ -41,6 +41,7 @@
     ['sushi', '🍣', 'Mestre do sushi', 'Entregue 20 pratos japoneses', function (s) { return (s.cats.japa || 0) >= 20; }],
     ['doceiro', '🍰', 'Confeiteiro', 'Entregue 25 sobremesas', function (s) { return (s.cats.doce || 0) >= 25; }],
     ['gourmet', '🦞', 'Paladar refinado', 'Entregue 15 pratos gourmet', function (s) { return (s.cats.gourmet || 0) >= 15; }],
+    ['campeao', '🏆', 'Campeão', 'Vença uma competição entre chefs', function (s, r) { return r && r.versus && r.versus.rank && r.versus.rank[0].i === 0 && r.nplayers >= 2; }],
     ['maratona', '🎮', 'Viciado', 'Jogue 25 partidas', function (s) { return s.matches >= 25; }]
   ];
 
@@ -67,6 +68,24 @@
         d.parts.map(function (id, i) { return span({ key: i, title: ITEMS[id].n, className: 'chip' }, h(Em, { e: ITEMS[id].e, size: 17 })); }),
         o.seas.map(function (s) { return span({ key: s, title: ITEMS[s].n, className: 'chip seas' }, h(Em, { e: ITEMS[s].e, size: 15 }), span({ className: 'sn' }, ITEMS[s].n)); })),
       div({ className: 'tk-bar' }, div({ style: { width: (f * 100) + '%', background: col } })));
+  }
+
+  /* placar da competição */
+  function Scoreboard(p) {
+    const sn = p.snap, pl = sn.pl || [];
+    if (sn.versus === 'teams') {
+      const tot = [0, 1].map(function (t) { return pl.reduce(function (s, q, i) { return s + (i % 2 === t ? (sn.pscore[i] || 0) : 0); }, 0); });
+      return div({ className: 'scoreboard' }, [0, 1].map(function (t) { return div({ key: t, className: 'sbteam t' + t }, (t ? '🔵 ' : '🔴 ') + tot[t]); }),
+        pl.map(function (q, i) { return div({ key: 'p' + i, className: 'sbrow', style: { borderColor: q.c } }, h(ChefIcon, { skin: { color: q.c, hat: q.h || 'toque' } }), span({ className: 'sbs' }, sn.pscore[i] || 0)); }));
+    }
+    return div({ className: 'scoreboard' }, pl.map(function (q, i) { return div({ key: i, className: 'sbrow', style: { borderColor: q.c } }, h(ChefIcon, { skin: { color: q.c, hat: q.h || 'toque' } }), span({ className: 'sbs' }, sn.pscore[i] || 0), sn.goal ? span({ className: 'sbg' }, (sn.pdel[i] || 0) + '/' + sn.goal) : null); }));
+  }
+  function VersusResult(p) {
+    const v = p.v, medals = ['🥇', '🥈', '🥉', '4º'];
+    return div({ className: 'versus' },
+      v.teams ? div({ className: 'vteams' }, v.teams.map(function (t, k) { return div({ key: t.t, className: 'vt' + (k === 0 ? ' win' : '') }, (t.t ? '🔵 Equipe azul' : '🔴 Equipe vermelha') + (k === 0 ? ' 🏆' : ''), div({ className: 'sub' }, t.members.join(' + ')), div({ className: 'vs' }, '💰 ' + t.score)); })) : null,
+      div({ className: 'vrank' }, v.rank.map(function (r, k) { return div({ key: r.i, className: 'vrow' + (k === 0 && !v.teams ? ' win' : '') }, span({ className: 'vm' }, medals[k] || (k + 1) + 'º'), h(ChefIcon, { skin: { color: r.color, hat: r.hat || 'toque' } }), span({ className: 'vn' }, r.name), span({ className: 'vd' }, r.del + ' pratos'), span({ className: 'vs' }, '💰 ' + r.score)); })),
+      v.goal ? div({ className: 'sub' }, 'Meta da corrida: ' + v.goal + ' pratos') : null);
   }
 
   /* guia rápido: aparece ao passar o mouse sobre um pedido */
@@ -210,6 +229,7 @@
           snap && (lv.endless || lv.lives) && snap.lives != null ? div({ className: 'stat lives' }, '❤️'.repeat(Math.max(0, snap.lives)) + '🖤'.repeat(Math.max(0, (lv.lives || 3) - snap.lives))) : null,
           snap && (snap.cfgBugs > 0 || snap.killed > 0) ? div({ className: 'stat', title: 'Pragas na cozinha / mortas' }, '🪳 ' + snap.bugsN + ' • ☠️ ' + snap.killed) : null,
           snap && snap.combo > 1 ? div({ className: 'stat combo' }, '🔥 x' + snap.combo) : null,
+          snap && snap.versus ? h(Scoreboard, { snap: snap }) : null,
           pl ? div({ className: 'plist' }, pl.map(function (x, i) { return span({ key: i, className: 'pl' + (i === MP.myIdx ? ' me' : ''), title: x.name }, h(ChefIcon, { skin: x.skin || { color: CC.COLS[i], hat: 'toque' } })); })) : null),
         div({ className: 'hud-r' },
           button({ className: 'btn sm', onClick: function () { toggle(true); setBook(true); } }, '📖 Receitas'), ' ', button({ className: 'btn sm', onClick: function () { toggle(true); } }, online ? '☰ Menu' : '⏸ Pausa'))),
@@ -234,15 +254,15 @@
           !online ? button({ className: 'btn', onClick: function () { setRun(run + 1); } }, '↻ Reiniciar') : null,
           button({ className: 'btn', onClick: function () { if (mode === 'host') MP.hostGameEnded(); p.onExit(); } }, online ? '🚪 Sair da partida' : '☰ Sair')))) : null,
       res ? div({ className: 'overlay' }, div({ className: 'modal result' },
-        h('h2', null, lv.practice ? 'Treino encerrado' : lv.endless ? 'Fim de jogo!' : res.stars ? 'Fase concluída!' : 'Não foi dessa vez…'),
-        div({ className: 'bigstars' }, h(Stars, { n: res.stars })),
+        h('h2', null, res.versus ? '🏁 Fim da competição!' : lv.practice ? 'Treino encerrado' : lv.endless ? 'Fim de jogo!' : res.stars ? 'Fase concluída!' : 'Não foi dessa vez…'),
+        res.versus ? h(VersusResult, { v: res.versus }) : div({ className: 'bigstars' }, h(Stars, { n: res.stars })),
         div({ className: 'score-big' }, '💰 ', res.score),
         div({ className: 'rstats' },
           div(null, '📦 Entregues: ', span({ className: 'v' }, res.delivered)),
           div(null, '❌ Perdidos: ', span({ className: 'v' }, res.failed)),
           div(null, '💸 Gorjetas: ', span({ className: 'v' }, res.tips)), res.killed ? div(null, '☠️ Pragas mortas: ', span({ className: 'v' }, res.killed)) : null,
           div(null, '🔥 Melhor combo: ', span({ className: 'v' }, 'x' + res.bestCombo))),
-        div({ className: 'need' }, '★ ' + res.need[0] + '   ★★ ' + res.need[1] + '   ★★★ ' + res.need[2]),
+        res.versus ? null : div({ className: 'need' }, '★ ' + res.need[0] + '   ★★ ' + res.need[1] + '   ★★★ ' + res.need[2]),
         p.newAch && p.newAch.length ? div({ className: 'newach' }, p.newAch.map(function (a) { return div({ key: a[0] }, '🏆 Conquista: ', a[1], ' ', a[2]); })) : null,
         div({ className: 'row' },
           !online ? button({ className: 'btn', onClick: function () { setRun(run + 1); } }, '↻ Tentar de novo') : null,
@@ -283,6 +303,9 @@
         card('📅', 'Desafio do Dia', 'Cardápio e cozinha iguais para todos hoje.', sv.daily[dk] ? 'Melhor de hoje: ' + sv.daily[dk] : 'Ainda não jogado hoje', function () { p.onPlay(CC.makeDaily()); }, '#e67e22'),
         card('🍟', 'Fast Food', '3 janelas (Balcão, Drive-thru, Delivery): cada pedido vai na janela certa. Estoque e loja.', 'Cardápio de fast food • 5 min', function () { p.onPlay(CC.makeFastFood()); }, '#e74c3c'),
         card('🪟', 'Salão de Restaurante', 'Cada mesa é uma janela. Estoque que acaba, caminhão de entrega e loja de melhorias.', '3 mesas • 5 min', function () { p.onPlay(CC.makeSalon()); }, '#2c7a7b'),
+        card('⚔️', 'Duelo de Chefs', 'Todos contra todos na mesma cozinha: pontos só para quem entrega. Dash derruba o rival!', '2 a 4 chefs • 4 min', function () { p.onPlay(CC.makeDuel()); }, '#b71c1c'),
+        card('🏁', 'Corrida de Pedidos', 'O primeiro chef a entregar 8 pratos vence.', '2 a 4 chefs', function () { p.onPlay(CC.makeRace()); }, '#f57f17'),
+        card('🛡️', 'Batalha de Equipes', '🔴 chefs 1 e 3 contra 🔵 chefs 2 e 4. Soma de pontos decide.', '2 a 4 chefs • 5 min', function () { p.onPlay(CC.makeTeams()); }, '#283593'),
         card('🪳', 'Infestação!', 'Baratas, moscas, formigas e vespas invadem a cozinha. Mate-as (R ou clique) antes que estraguem a comida.', 'Estoque + loja anti-pragas • 5 min', function () { p.onPlay(CC.makePests()); }, '#5d4037'),
         card('🦗', 'Restaurante Entomológico', 'Cardápio de insetos comestíveis: grilo frito, larva, gafanhoto e formiga com chocolate!', '20 pratos de insetos', function () { p.onPlay(CC.makeEntomo()); }, '#6b8e23'),
         card('💡', 'Noite de Apagões', 'A luz cai e volta, com horas de rush. Só os chefs têm lanterna.', 'Eventos aleatórios • 5 min', function () { p.onPlay(CC.makeBlackout()); }, '#1a237e'),
@@ -293,7 +316,7 @@
 
   /* ---------- restaurante personalizado ---------- */
   function Custom(p) {
-    const init = Object.assign({ ids: ['hamburguer', 'batata_frita', 'suco_laranja', 'pizza_marg', 'sopa_tomate', 'bolo'], tempo: 240, pace: 1, layout: 'ilha', seasP: 0.3, windows: 1, winStyle: 'fast', size: 'medium', stockInit: 8, priceMul: 1, truckMul: 1, bugs: 0, speed: 1, chef: 1, burn: 1, vip: 0.08, lives: 0, tips: true, rush: false, dark: false, noCollide: false, shop: true, stock: false }, p.save.custom || {});
+    const init = Object.assign({ ids: ['hamburguer', 'batata_frita', 'suco_laranja', 'pizza_marg', 'sopa_tomate', 'bolo'], tempo: 240, pace: 1, layout: 'ilha', seasP: 0.3, windows: 1, winStyle: 'fast', size: 'medium', stockInit: 8, priceMul: 1, truckMul: 1, bugs: 0, speed: 1, chef: 1, burn: 1, vip: 0.08, lives: 0, tips: true, rush: false, dark: false, noCollide: false, shop: true, stock: false, utensils: true, utUses: 1, versus: 'coop', pvp: false, goal: 0 }, p.save.custom || {});
     const cs = useState(init), cfg = cs[0], setCfg = cs[1];
     const cats = useState('todos'), cat = cats[0], setCat = cats[1];
     const qs = useState(''), q = qs[0], setQ = qs[1];
@@ -323,6 +346,13 @@
           h('label', null, 'Comida queima: ', sel('burn', [[0, 'Nunca'], [1.6, 'Devagar'], [1, 'Normal'], [0.6, 'Rápido']])),
           h('label', null, 'Velocidade dos chefs: ', sel('chef', [[0.8, 'Lenta'], [1, 'Normal'], [1.2, 'Rápida']])),
           h('label', { className: 'chk' }, input({ type: 'checkbox', checked: !!cfg.noCollide, onChange: function (e) { set('noCollide', e.target.checked); } }), ' Chefs atravessam uns aos outros'),
+          h('h4', null, '🍲 Utensílios'),
+          h('label', { className: 'chk' }, input({ type: 'checkbox', checked: cfg.utensils !== false, onChange: function (e) { set('utensils', e.target.checked); } }), ' Panelas, frigideiras etc. precisam ser lavadas'),
+          cfg.utensils !== false ? h('label', null, 'Durabilidade (usos até sujar): ', sel('utUses', [[0.5, 'Suja rápido (0,5×)'], [1, 'Normal'], [1.5, 'Resistente (1,5×)'], [2, 'Muito resistente (2×)'], [4, 'Quase eterno (4×)']])) : null,
+          h('h4', null, '⚔️ Competição entre chefs'),
+          h('label', null, 'Tipo de partida: ', sel('versus', [['coop', '🤝 Cooperativo'], ['ffa', '⚔️ Todos contra todos'], ['teams', '🛡️ Equipes (2×2)']])),
+          cfg.versus && cfg.versus !== 'coop' ? h('label', null, 'Meta: ', sel('goal', [[0, 'Maior pontuação no tempo'], [5, 'Primeiro a 5 pratos'], [8, 'Primeiro a 8 pratos'], [12, 'Primeiro a 12 pratos']])) : null,
+          h('label', { className: 'chk' }, input({ type: 'checkbox', checked: !!cfg.pvp, onChange: function (e) { set('pvp', e.target.checked); } }), ' Dash derruba outros chefs'),
           h('h4', null, '🪟 Janelas, estoque e loja'),
           h('label', null, 'Janelas de entrega: ', sel('windows', [[1, '1 janela'], [2, '2 janelas'], [3, '3 janelas'], [4, '4 janelas']])),
           h('label', null, 'Estilo das janelas: ', sel('winStyle', [['fast', 'Balcão / Drive-thru / Delivery'], ['salao', 'Mesas 1, 2, 3…']])),
@@ -404,7 +434,7 @@
     const camp = CC.LEVELS.filter(function (l) { return !l.practice; });
     const startIt = function () {
       let lv;
-      if (mode === 'endless') lv = CC.makeEndless(); else if (mode === 'fastfood') lv = CC.makeFastFood(); else if (mode === 'salon') lv = CC.makeSalon(); else if (mode === 'pests') lv = CC.makePests(); else if (mode === 'entomo') lv = CC.makeEntomo(); else if (mode === 'blackout') lv = CC.makeBlackout(); else if (mode === 'daily') lv = CC.makeDaily(); else if (mode === 'train') lv = CC.LEVELS[CC.LEVELS.length - 1];
+      if (mode === 'endless') lv = CC.makeEndless(); else if (mode === 'duel') lv = CC.makeDuel(); else if (mode === 'race') lv = CC.makeRace(); else if (mode === 'teams') lv = CC.makeTeams(); else if (mode === 'fastfood') lv = CC.makeFastFood(); else if (mode === 'salon') lv = CC.makeSalon(); else if (mode === 'pests') lv = CC.makePests(); else if (mode === 'entomo') lv = CC.makeEntomo(); else if (mode === 'blackout') lv = CC.makeBlackout(); else if (mode === 'daily') lv = CC.makeDaily(); else if (mode === 'train') lv = CC.LEVELS[CC.LEVELS.length - 1];
       else lv = camp.find(function (l) { return 'c' + l.id === mode; });
       p.onHostStart(lv);
     };
@@ -419,7 +449,7 @@
         div({ className: 'st-card' }, h('h3', null, '🎮 Partida'),
           host ? div(null,
             h('label', null, 'Modo/fase: ', select({ value: mode, onChange: function (e) { setMode(e.target.value); } },
-              option({ value: 'endless' }, '♾️ Modo Infinito'), option({ value: 'fastfood' }, '🍟 Fast Food (3 janelas)'), option({ value: 'salon' }, '🪟 Salão (3 mesas)'), option({ value: 'pests' }, '🪳 Infestação!'), option({ value: 'entomo' }, '🦗 Entomológico'), option({ value: 'blackout' }, '💡 Noite de Apagões'), option({ value: 'daily' }, '📅 Desafio do Dia'), option({ value: 'train' }, '🧪 Treino Livre'),
+              option({ value: 'endless' }, '♾️ Modo Infinito'), option({ value: 'duel' }, '⚔️ Duelo de Chefs'), option({ value: 'race' }, '🏁 Corrida de Pedidos'), option({ value: 'teams' }, '🛡️ Batalha de Equipes'), option({ value: 'fastfood' }, '🍟 Fast Food (3 janelas)'), option({ value: 'salon' }, '🪟 Salão (3 mesas)'), option({ value: 'pests' }, '🪳 Infestação!'), option({ value: 'entomo' }, '🦗 Entomológico'), option({ value: 'blackout' }, '💡 Noite de Apagões'), option({ value: 'daily' }, '📅 Desafio do Dia'), option({ value: 'train' }, '🧪 Treino Livre'),
               camp.map(function (l) { return option({ key: l.id, value: 'c' + l.id }, l.id + '. ' + l.nome); }))),
             div({ className: 'sub pad' }, 'Todos cozinham juntos na mesma cozinha. Todas as fases estão liberadas online.'),
             button({ className: 'btn big', onClick: startIt }, '▶ Começar partida'))
@@ -496,6 +526,8 @@
             h('li', null, 'Sopas, cafés e bebidas só saem do equipamento com um ', h('b', null, 'prato limpo'), ' na mão.'),
             h('li', null, 'Monte o prato juntando os itens: com o prato na mão, interaja com o item. Só combinações do cardápio são aceitas.'),
             h('li', null, 'Temperos: pegue o frasco e use no prato, ou, com o prato na mão, interaja direto com a caixa de tempero.'),
+            h('li', null, h('b', null, 'Utensílios 🍲: '), 'cada equipamento precisa do seu recipiente (panela, frigideira, wok, cesto, jarra…). Depois de alguns usos ele fica ', h('b', null, 'sujo'), ': pegue-o (mão vazia no equipamento vazio), lave na pia (segure E) e pegue outro limpo na ', h('b', null, 'prateleira de utensílios'), ' (aperte E de frente para ela para escolher o tipo).'),
+            h('li', null, h('b', null, 'Competição ⚔️: '), 'nos modos Duelo, Corrida e Equipes, cada entrega vale pontos para quem a fez. Dash num rival o derruba por um instante.'),
             h('li', null, 'Pratos entregues voltam ', h('b', null, 'sujos'), '. Lave na pia (segure E).'),
             h('li', null, 'Gorjetas por rapidez, ', h('b', null, 'combos'), ' por entregas seguidas e pedidos ⭐ VIP que valem o dobro.')))));
   }

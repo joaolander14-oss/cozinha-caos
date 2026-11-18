@@ -30,8 +30,22 @@
     tips: { n: 'Caixa registradora', e: '🧾', d: 'Gorjetas +25% por nível', cost: [140, 250, 400] },
     dashcd: { n: 'Botas turbo', e: '⚡', d: 'O dash recarrega 20% mais rápido por nível', cost: [90, 160, 260] },
     clock: { n: 'Relógio extra', e: '⏱️', d: '+15s no relógio (ou +1 vida nos modos com vidas). Compre quando precisar', cost: [130], repeat: true },
+    durable: { n: 'Utensílios resistentes', e: '🛡️', d: 'Panelas e frigideiras aguentam +2 usos antes de sujar, por nível', cost: [110, 200, 320] },
+    spares: { n: 'Jogo extra de utensílios', e: '🍲', d: 'Adiciona 1 de cada utensílio à prateleira (compre quando precisar)', cost: [140], repeat: true },
     generator: { n: 'Gerador de emergência', e: '🔋', d: 'A cozinha não fica às escuras em apagões', cost: [200] }
   });
+  /* utensílios: cada equipamento precisa do seu recipiente; suja depois de alguns usos */
+  CC.UT = {
+    pot: { n: 'Panela', e: '🍲', col: '#9aa0aa', uses: 4 }, pan: { n: 'Frigideira', e: '🍳', col: '#4a4d55', uses: 5 }, wok: { n: 'Wok', e: '🥘', col: '#6d4c41', uses: 5 },
+    fryer: { n: 'Cesto de fritura', e: '🧺', col: '#b0bec5', uses: 6 }, oven: { n: 'Assadeira', e: '🔲', col: '#78909c', uses: 4 }, blender: { n: 'Jarra', e: '🫙', col: '#80cbc4', uses: 5 },
+    mixer: { n: 'Tigela', e: '🥣', col: '#d7ccc8', uses: 5 }, processor: { n: 'Copo do processador', e: '🥤', col: '#90a4ae', uses: 5 }, steamer: { n: 'Cesto de vapor', e: '🎋', col: '#c9a56b', uses: 5 },
+    ricecooker: { n: 'Panela de arroz', e: '🍚', col: '#eceff1', uses: 5 }, pressure: { n: 'Panela de pressão', e: '🥫', col: '#78909c', uses: 4 }, bainmarie: { n: 'Pote de banho-maria', e: '🫕', col: '#c9a35b', uses: 5 },
+    sushi: { n: 'Esteira de bambu', e: '🪵', col: '#a1887f', uses: 6 }, breader: { n: 'Bandeja de empanar', e: '🍽️', col: '#c9a56b', uses: 6 }, waffler: { n: 'Forma de crepe', e: '🧇', col: '#8d6e63', uses: 6 }
+  };
+  CC.mkUt = function (k) { return { ut: k, uses: 0, dirty: false }; };
+  function utMax(k) { return Math.max(1, Math.round((CC.UT[k].uses + 2 * up('durable')) * cfg('utUses', 1))); }
+  CC.utMax = utMax;
+  function isUt(h) { return !!(h && h.ut); }
   function cfg(k, d) { return (G && G.cfg && G.cfg[k] != null) ? G.cfg[k] : d; }
   function up(k) { return (G && G.up && G.up[k]) || 0; }
 
@@ -57,6 +71,7 @@
   /* ---------- equipamentos ---------- */
   function appAccepts(a, id) {
     if (a.st !== 'idle' || a.out) return false;
+    if (G.utOn && CC.UT[a.kind] && (!a.ut || a.ut.dirty)) return false;
     if (a.items.length >= APPS[a.kind].cap) return false;
     const ni = a.items.concat([id]);
     return G.recs.some(function (r) { return r.app === a.kind && contains(r.in, ni); });
@@ -74,7 +89,7 @@
       } else { a.grace = 0; a.wait = 0; }
     } else if (a.st === 'cook') {
       a.prog += dt * (1 + 0.12 * up('heat'));
-      if (a.prog >= a.rec.t) { a.st = 'done'; a.out = a.rec.out; a.items = []; a.burn = 0; sfx('done'); toast(ITEMS[a.out].n + ' pronto!', 'ok'); }
+      if (a.prog >= a.rec.t) { a.st = 'done'; a.out = a.rec.out; a.items = []; a.burn = 0; if (a.ut) a.ut.uses++; sfx('done'); toast(ITEMS[a.out].n + ' pronto!', 'ok'); }
     } else if (a.st === 'done') {
       a.burn += dt;
       const BA = (14 + 5 * up('timer')) * cfg('burn', 1);
@@ -106,15 +121,17 @@
     const rel = {};
     G.menu.forEach(function (d) { d.parts.forEach(function walk(id) { if (rel[id]) return; rel[id] = 1; (CC.PROD[id] || []).forEach(function (r) { r.in.forEach(walk); }); }); });
     G.recs = RECIPES.filter(function (r) { return rel[r.out]; });
-    G.cfg = lv.cfg || {}; G.bugs = []; G.bugT = 4; G.bugId = 1; G.immune = 0; G.rush = 0; G.dark = 0; G.killed = 0; G.zapT = 5;
+    G.cfg = lv.cfg || {}; G.utOn = lv.utensils !== false && (G.cfg.utensils !== false);
+    G.versus = lv.versus || null; G.winner = null; G.bugs = []; G.bugT = 15; G.bugId = 1; G.immune = 0; G.rush = 0; G.dark = 0; G.killed = 0; G.zapT = 5;
     G.evT = { rush: 40 + Math.random() * 40, dark: 55 + Math.random() * 50 };
     G.up = {}; Object.keys(CC.SHOP).forEach(function (k) { G.up[k] = 0; });
     G.stockOn = !!lv.stock; G.shopOn = lv.shop !== false; G.cash = lv.cash != null ? lv.cash : (lv.stock ? 300 : 0); G.trucks = []; G.nwin = lv.windows || 1;
     G.stock = {}; G.stockIds = [];
     G.grid.forEach(function (row) { row.forEach(function (t) { if (t && t.k === 'crate' && !CC.SEAS[t.id] && G.stockIds.indexOf(t.id) < 0) { G.stockIds.push(t.id); if (G.stockOn) G.stock[t.id] = (lv.stock && lv.stock.initial) || 6; } }); });
-    const np = opts.players || 1;
+    const np = Math.max(lv.minPlayers || 1, opts.players || 1);
     for (let i = 0; i < np; i++) G.players.push(mkPlayer(i, built, opts.skins && opts.skins[i], opts.names && opts.names[i]));
     (opts.remote || []).forEach(function (i) { if (G.players[i]) G.players[i].remote = true; });
+    G.pscore = G.players.map(function () { return 0; }); G.pdel = G.players.map(function () { return 0; }); G.pcombo = G.players.map(function () { return 0; });
     setupInput(np);
     lastT = performance.now();
     cancelAnimationFrame(raf);
@@ -136,7 +153,7 @@
     const grid = G.grid.map(function (row) {
       return row.map(function (t) {
         if (!t) return null;
-        if (t.k === 'app') return { k: 'app', kind: t.kind, items: t.items, st: t.st, prog: t.prog, rec: t.rec ? { t: t.rec.t, out: t.rec.out } : null, out: t.out, burn: t.burn, wait: t.wait || 0 };
+        if (t.k === 'app') return { k: 'app', kind: t.kind, ut: t.ut, items: t.items, st: t.st, prog: t.prog, rec: t.rec ? { t: t.rec.t, out: t.rec.out } : null, out: t.out, burn: t.burn, wait: t.wait || 0 };
         if (t.k === 'crate') return t;
         return t;
       });
@@ -146,17 +163,18 @@
       W: G.W, H: G.H, grid: grid, ev: ev,
       score: G.score, left: G.left, time: G.time, combo: G.combo, delivered: G.delivered, failed: G.failed, over: G.over, countdown: G.countdown, lives: G.lives, tips: G.tips, bestCombo: G.bestCombo,
       cash: G.cash, stock: G.stock, up: G.up, stockOn: G.stockOn, shopOn: G.shopOn, nwin: G.nwin, trucks: G.trucks.map(function (t) { return { t: t.t, n: t.boxes.length }; }),
+      utOn: G.utOn, versus: G.versus, pscore: G.pscore, pdel: G.pdel,
       rush: G.rush, dark: G.dark, killed: G.killed, bugs: G.bugs.map(function (b) { return { id: b.id, k: b.k, x: b.x, y: b.y, a: b.a }; }), cfgBugs: cfg('bugs', 0),
       result: G.result || null,
       orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, seas: o.seas, t: o.t, tmax: o.tmax, vip: o.vip, win: o.win }; }),
-      players: G.players.map(function (p) { return { x: p.x, y: p.y, dx: p.dx, dy: p.dy, hold: p.hold, tray: p.tray, actKind: p.actKind, swing: p.swing || 0, chopping: p.chopping, dash: p.dash, walk: p.walk, msg: p.msg, msgT: p.msgT, color: p.color, hat: p.hat, name: p.name, dcd: p.dcd }; })
+      players: G.players.map(function (p) { return { x: p.x, y: p.y, dx: p.dx, dy: p.dy, hold: p.hold, tray: p.tray, actKind: p.actKind, swing: p.swing || 0, stun: p.stun || 0, chopping: p.chopping, dash: p.dash, walk: p.walk, msg: p.msg, msgT: p.msgT, color: p.color, hat: p.hat, name: p.name, dcd: p.dcd }; })
     };
   };
   E.applyState = function (s, first) {
     G.W = s.W; G.H = s.H; G.grid = s.grid;
     G.score = s.score; G.left = s.left; G.time = s.time; G.combo = s.combo; G.delivered = s.delivered; G.failed = s.failed; G.over = s.over; G.countdown = s.countdown; G.lives = s.lives; G.tips = s.tips; G.bestCombo = s.bestCombo;
     if (s.result) G.result = s.result;
-    G.cash = s.cash; G.stock = s.stock; G.up = s.up; G.stockOn = s.stockOn; G.shopOn = s.shopOn; G.nwin = s.nwin; G.trucks = s.trucks; G.rush = s.rush; G.dark = s.dark; G.killed = s.killed; G.cfgBugs = s.cfgBugs;
+    G.cash = s.cash; G.stock = s.stock; G.up = s.up; G.stockOn = s.stockOn; G.shopOn = s.shopOn; G.nwin = s.nwin; G.trucks = s.trucks; G.rush = s.rush; G.dark = s.dark; G.killed = s.killed; G.cfgBugs = s.cfgBugs; G.utOn = s.utOn; G.versus = s.versus; G.pscore = s.pscore; G.pdel = s.pdel;
     (function () {
       const old = {}; (G.bugs || []).forEach(function (b) { old[b.id] = b; });
       G.bugs = (s.bugs || []).map(function (q) { const b = old[q.id] || { id: q.id, k: q.k, x: q.x, y: q.y }; b.k = q.k; b.tx = q.x; b.ty = q.y; b.a = q.a; return b; });
@@ -167,7 +185,7 @@
       let p = G.players[i];
       if (!p) { p = G.players[i] = Object.assign({ id: i, mx: 0, my: 0, act: false, remote: false, tx: q.x, ty: q.y }, q); }
       const mine = i === G.myIdx;
-      ['dx', 'dy', 'hold', 'tray', 'actKind', 'swing', 'chopping', 'dash', 'walk', 'msg', 'msgT', 'color', 'hat', 'name', 'dcd'].forEach(function (k) { if (!(mine && (k === 'dx' || k === 'dy' || k === 'dash' || k === 'walk' || k === 'dcd'))) p[k] = q[k]; });
+      ['dx', 'dy', 'hold', 'tray', 'actKind', 'swing', 'stun', 'chopping', 'dash', 'walk', 'msg', 'msgT', 'color', 'hat', 'name', 'dcd'].forEach(function (k) { if (!(mine && (k === 'dx' || k === 'dy' || k === 'dash' || k === 'walk' || k === 'dcd'))) p[k] = q[k]; });
       p.tx = q.x; p.ty = q.y;
       if (first || Math.hypot(p.x - q.x, p.y - q.y) > 1.6) { p.x = q.x; p.y = q.y; }
     });
@@ -197,6 +215,7 @@
     return {
       score: G.score, left: G.left, time: G.time, combo: G.combo, delivered: G.delivered, failed: G.failed, over: G.over, countdown: G.countdown, lives: G.lives, endless: !!G.lv.endless,
       cash: G.cash, stock: G.stock, up: G.up, stockOn: G.stockOn, shopOn: G.shopOn, nwin: G.nwin, stockIds: G.stockIds, trucks: G.trucks ? G.trucks.map(function (t) { return { t: t.t, n: t.boxes.length }; }) : [],
+      versus: G.versus, goal: G.lv.goal || 0, pscore: G.pscore, pdel: G.pdel, pl: G.players.map(function (q, i) { return { n: q.name, c: q.color, h: q.hat }; }),
       rush: G.rush, dark: G.dark, killed: G.killed, bugsN: G.bugs ? G.bugs.length : 0, cfgBugs: G.client ? G.cfgBugs : cfg('bugs', 0), lvives: G.lives,
       orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, t: o.t, tmax: o.tmax, seas: o.seas, vip: o.vip, win: o.win }; }),
       toasts: G.toasts.slice(-3).map(function (t) { return { id: t.id, txt: t.txt, kind: t.kind }; }),
@@ -239,16 +258,20 @@
     const frac = best.t / best.tmax;
     const base = Math.round((best.dish.price + (best.seas.length ? 5 : 0)) * (1 + 0.08 * up('price')));
     const tip = cfg('tips', true) === false ? 0 : Math.round(base * 0.5 * frac * (1 + 0.25 * up('tips')));
-    G.combo++; G.bestCombo = Math.max(G.bestCombo, G.combo); G.dishCount[best.dish.id] = (G.dishCount[best.dish.id] || 0) + 1;
-    const cb = Math.min(G.combo - 1, 6) * 3;
+    let cmb;
+    if (G.versus) { G.pcombo[p.id] = (G.pcombo[p.id] || 0) + 1; cmb = G.pcombo[p.id]; G.combo = cmb; } else { G.combo++; cmb = G.combo; }
+    G.bestCombo = Math.max(G.bestCombo, G.combo); G.dishCount[best.dish.id] = (G.dishCount[best.dish.id] || 0) + 1;
+    const cb = Math.min(cmb - 1, 6) * 3;
     const pts = Math.round((base + tip + cb) * (best.vip ? 2 : 1) * (G.rush > 0 ? 1.5 : 1));
     G.score += pts; G.cash += pts; G.tips += tip; G.delivered++;
+    if (G.versus) { G.pscore[p.id] += pts; G.pdel[p.id]++; }
     G.orders.splice(G.orders.indexOf(best), 1);
     float(tile.x + 0.5, tile.y + 0.2, '+' + pts + (G.combo > 1 ? ' x' + G.combo : ''), '#ffd84a');
     toast(best.dish.n + ' entregue! +' + pts, 'ok');
     sfx('ding'); sfx('coin');
     tile.flash = 0.6;
     G.pending.push({ t: 6 + Math.random() * 3 });
+    if (G.versus && G.lv.goal && G.pdel[p.id] >= G.lv.goal) { G.winner = p.id; finish(); }
     return true;
   }
 
@@ -278,7 +301,7 @@
     return false;
   }
   function interact(p) {
-    if (G.over || G.countdown > 0) return;
+    if (G.over || G.countdown > 0 || p.stun > 0) return;
     const tg = target(p);
     if (!tg) return;
     const t = tg.t;
@@ -321,10 +344,27 @@
       case 'trash':
         if (!h) return;
         if (h.box) { say(p, 'Não jogue o estoque fora!'); return; }
+        if (h.ut) { say(p, 'Lave o utensílio, não jogue fora!'); return; }
         if (isPlate(h)) { if (h.items.length) { h.items = []; sfx('trash'); } return; }
         if (h.dirty) return;
         p.hold = null; sfx('trash'); return;
+      case 'utrack': {
+        if (!h) {
+          if (!t.items.length) { say(p, 'Sem utensílios limpos'); return; }
+          // escolhe o utensílio que algum equipamento está precisando
+          const need = {};
+          G.grid.forEach(function (row) { row.forEach(function (q) { if (q && q.k === 'app' && CC.UT[q.kind] && (!q.ut || q.ut.dirty)) need[q.kind] = 1; }); });
+          let idx = -1;
+          if (t.sel != null && t.items[t.sel % t.items.length] && p.cycled) idx = t.sel % t.items.length;
+          if (idx < 0) idx = t.items.findIndex(function (u) { return need[u.ut]; });
+          if (idx < 0) idx = 0;
+          p.hold = t.items.splice(idx, 1)[0]; sfx('pick'); return;
+        }
+        if (isUt(h)) { if (h.dirty) { say(p, 'Lave primeiro'); return; } t.items.push(h); p.hold = null; sfx('put'); return; }
+        say(p, 'Só utensílios limpos aqui'); return;
+      }
       case 'sink':
+        if (h && h.ut) { t.duts = t.duts || []; t.duts.push(h); p.hold = null; sfx('put'); return; }
         if (h && h.dirty) { let n = 1; p.tray = p.tray.filter(function (x) { if (x.dirty) { n++; return false; } return true; }); t.dirty += n; p.hold = null; sfx('put'); return; }
         if (!h && t.clean > 0) { t.clean--; p.hold = newPlate(); sfx('pick'); return; }
         if (isPlate(h) && !h.items.length) { let n = 1; p.tray = p.tray.filter(function (x) { if (x.plate && !x.items.length) { n++; return false; } return true; }); t.clean += n; p.hold = null; sfx('put'); return; }
@@ -371,14 +411,21 @@
   }
 
   function interactApp(p, a) {
-    const h = p.hold;
+    const h = p.hold, U = G.utOn && CC.UT[a.kind];
+    // colocar / trocar utensílio
+    if (U && isUt(h)) {
+      if (h.ut !== a.kind) { say(p, 'Isso não serve aqui (' + CC.UT[h.ut].n + ')'); sfx('wrong'); return; }
+      if (a.st !== 'idle' || a.items.length || a.out) { say(p, 'Esvazie primeiro'); sfx('wrong'); return; }
+      const old = a.ut; a.ut = h; p.hold = old || null; sfx('put'); return;
+    }
     if (!h) {
       if (a.out) {
         const it = ITEMS[a.out];
         if (it.liq) { say(p, 'Precisa de um prato'); return; }
         p.hold = a.out; resetApp(a); sfx('pick'); return;
       }
-      if (a.st === 'idle' && a.items.length) { p.hold = a.items.pop(); a.grace = 0; a.wait = 0; sfx('pick'); }
+      if (a.st === 'idle' && a.items.length) { p.hold = a.items.pop(); a.grace = 0; a.wait = 0; sfx('pick'); return; }
+      if (U && a.ut && a.st === 'idle') { p.hold = a.ut; a.ut = null; sfx('pick'); }
       return;
     }
     if (isPlate(h)) {
@@ -391,12 +438,18 @@
       return;
     }
     if (isItem(h)) {
+      if (U && !a.ut) { say(p, 'Precisa de ' + U.n.toLowerCase() + '!'); sfx('wrong'); return; }
+      if (U && a.ut.dirty) { say(p, U.n + ' suja! Lave na pia'); sfx('wrong'); return; }
       if (appAccepts(a, h)) { a.items.push(h); p.hold = null; a.grace = 0; sfx('put'); }
       else if (a.out) say(p, 'Ocupado');
       else say(p, 'Isso não vai aqui');
     }
   }
-  function resetApp(a) { a.st = 'idle'; a.out = null; a.rec = null; a.prog = 0; a.burn = 0; a.warned = false; a.items = []; a.grace = 0; a.wait = 0; }
+  function resetApp(a) {
+    const had = !!a.out;
+    a.st = 'idle'; a.out = null; a.rec = null; a.prog = 0; a.burn = 0; a.warned = false; a.items = []; a.grace = 0; a.wait = 0;
+    if (had && a.ut && a.ut.uses >= utMax(a.kind)) { a.ut.dirty = true; if (G) { toast('🧽 ' + CC.UT[a.kind].n + ' suja! Lave na pia', 'bad'); } }
+  }
 
   /* ação segurada (cortar, ralar, pilar, espremer, descascar, lavar) */
   function holdAction(p, dt) {
@@ -404,16 +457,22 @@
     const tg = target(p);
     if (!tg) return;
     const t = tg.t, C = CC.CUTS[t.k];
+    if (t.k === 'utrack') { if (!p.actPrev && t.items.length) { t.sel = ((t.sel == null ? -1 : t.sel) + 1) % t.items.length; p.cycled = true; const u = t.items[t.sel]; say(p, 'Próximo: ' + CC.UT[u.ut].n); sfx('click'); } return; }
     if (C && isItem(t.thing) && ITEMS[t.thing].raw && CC.ING[t.thing] && CC.ING[t.thing][C.adj]) {
       const sec = CC.ING[t.thing][C.sec] || 2.5;
       p.chopping = true; p.actKind = t.k;
       t.prog += dt * (1 + 0.35 * up('knife')) / sec;
       if (t.prog >= 1) { t.thing = t.thing + C.suf; t.prog = 0; sfx('chopdone'); float(tg.x + 0.5, tg.y, C.badge, '#fff'); }
-    } else if (t.k === 'sink' && t.dirty > 0) {
+    } else if (t.k === 'sink' && (t.dirty > 0 || (t.duts && t.duts.length))) {
       p.chopping = true; p.actKind = 'wash';
-      t.prog += dt * (1 + 0.6 * up('sponge')) / 3;
+      const utw = !!(t.duts && t.duts.length);
+      t.prog += dt * (1 + 0.6 * up('sponge')) / (utw ? 4.5 : 3);
       if (Math.random() < dt * 14) G.parts.push({ x: tg.x + 0.25 + Math.random() * 0.5, y: tg.y + 0.45, vy: -0.5, t: 0.8, c: 'rgba(130,200,255,', r: 0.05 + Math.random() * 0.05 });
-      if (t.prog >= 1) { t.prog = 0; t.dirty--; t.clean++; sfx('chopdone'); }
+      if (t.prog >= 1) {
+        t.prog = 0; sfx('chopdone');
+        if (utw) { const u = t.duts.shift(); u.uses = 0; u.dirty = false; const rk = findTile('utrack'); if (rk) rk.items.push(u); float(tg.x + 0.5, tg.y, '✨', '#8fe3ff'); }
+        else { t.dirty--; t.clean++; }
+      }
     }
   }
 
@@ -422,6 +481,7 @@
   function move(p, dt) {
     if (p.dcd > 0) p.dcd -= dt;
     let mx = p.mx, my = p.my;
+    if (p.stun > 0) { p.stun -= dt; mx = 0; my = 0; }
     const mag = Math.hypot(mx, my);
     if (mag > 0) { mx /= mag; my /= mag; if (Math.abs(mx) > Math.abs(my) + 0.01) { p.dx = Math.sign(mx); p.dy = 0; } else if (Math.abs(my) > Math.abs(mx) + 0.01) { p.dx = 0; p.dy = Math.sign(my); } else { p.dx = Math.sign(mx); p.dy = 0; } }
     let sp = 4.4 * cfg('chef', 1) * (1 + 0.08 * up('shoes')) * (up('cart') ? 0.85 : p.tray && p.tray.length >= 2 ? 0.94 : 1);
@@ -468,7 +528,15 @@
     // jogadores
     G.players.forEach(function (p) {
       move(p, dt);
-      if (p.act) holdAction(p, dt); else p.chopping = false;
+      if (cfg('pvp', false) && p.dash > 0) G.players.forEach(function (o) {
+        if (o !== p && !(o.stun > 0) && Math.hypot(o.x - p.x, o.y - p.y) < 0.85) {
+          o.stun = 1.3; o.mx = 0; o.my = 0; const dx = o.x - p.x, dy = o.y - p.y, d = Math.hypot(dx, dy) || 1;
+          for (let s = 0; s < 8; s++) { const nx = o.x + dx / d * 0.15, ny = o.y + dy / d * 0.15; if (!hit(nx, ny, o)) { o.x = nx; o.y = ny; } }
+          p.dash = 0; sfx('bump'); float(o.x, o.y - 0.7, '💫', '#fff');
+        }
+      });
+      if (p.act && !(p.stun > 0)) holdAction(p, dt); else p.chopping = false;
+      p.actPrev = !!p.act;
       if (p.msgT > 0) p.msgT -= dt;
       if (p.scd > 0) p.scd -= dt;
       if (p.swing > 0) p.swing -= dt;
@@ -479,7 +547,7 @@
       if (!t) continue;
       t.x = x; t.y = y;
       if (t.k === 'app') updateApp(t, dt);
-      if (t.k === 'sink' && up('auto') && t.dirty > 0) { t.auto = (t.auto || 0) + dt; if (t.auto >= 9 - 3 * up('auto')) { t.auto = 0; t.dirty--; t.clean++; } }
+      if (t.k === 'sink' && up('auto') && (t.dirty > 0 || (t.duts && t.duts.length))) { t.auto = (t.auto || 0) + dt; if (t.auto >= 9 - 3 * up('auto')) { t.auto = 0; if (t.dirty > 0) { t.dirty--; t.clean++; } else { const u = t.duts.shift(); u.uses = 0; u.dirty = false; const rk = findTile('utrack'); if (rk) rk.items.push(u); } } }
       if (t.flash > 0) t.flash -= dt;
     }
     // caminhões de estoque
@@ -514,11 +582,11 @@
   }
   /* ---------- pragas ---------- */
   const BUGS = {
-    roach: { e: '🪳', sp: 1.7, hp: 1, bite: 9, w: 3 }, fly: { e: '🪰', sp: 3.2, hp: 1, bite: 12, w: 3, fly: 1 }, ant: { e: '🐜', sp: 1.3, hp: 1, bite: 8, w: 2, group: 3 },
-    beetle: { e: '🪲', sp: 1.2, hp: 2, bite: 10, w: 1 }, wasp: { e: '🐝', sp: 3.6, hp: 1, bite: 14, w: 1, fly: 1 }, worm: { e: '🐛', sp: 0.9, hp: 2, bite: 8, w: 1 }
+    roach: { e: '🪳', sp: 1.2, hp: 1, bite: 13, w: 3 }, fly: { e: '🪰', sp: 2.2, hp: 1, bite: 16, w: 3, fly: 1 }, ant: { e: '🐜', sp: 0.9, hp: 1, bite: 12, w: 2, group: 2 },
+    beetle: { e: '🪲', sp: 0.9, hp: 1, bite: 14, w: 1 }, wasp: { e: '🐝', sp: 2.4, hp: 1, bite: 18, w: 1, fly: 1 }, worm: { e: '🐛', sp: 0.7, hp: 1, bite: 12, w: 1 }
   };
   CC.BUGS = BUGS;
-  const BCAP = [0, 4, 8, 14], BINT = [99, 16, 10, 6];
+  const BCAP = [0, 3, 6, 10], BINT = [99, 24, 15, 9];
   function floorEdge() {
     for (let k = 0; k < 40; k++) {
       const x = 1 + Math.floor(Math.random() * (G.W - 2)), y = 1 + Math.floor(Math.random() * (G.H - 2));
@@ -553,8 +621,8 @@
   function updateBugs(dt) {
     const lvl = cfg('bugs', 0) | 0;
     if (G.immune > 0) G.immune -= dt;
-    if (lvl > 0 && G.immune <= 0) { G.bugT -= dt; if (G.bugT <= 0) { G.bugT = BINT[lvl] * (1 + 0.35 * up('screens')) * (0.7 + Math.random() * 0.6); spawnBugs(); } }
-    if (up('zapper') && G.bugs.length) { G.zapT -= dt; if (G.zapT <= 0) { G.zapT = 5; for (let i = 0; i < up('zapper') && G.bugs.length; i++) { const b = G.bugs[Math.floor(Math.random() * G.bugs.length)]; kill(b, '⚡'); } sfx('zap'); } }
+    if (lvl > 0 && G.immune <= 0) { G.bugT -= dt; if (G.bugT <= 0) { G.bugT = BINT[lvl] * (1 + 0.4 * up('screens')) * (0.8 + Math.random() * 0.6); spawnBugs(); } }
+    if (up('zapper') && G.bugs.length) { G.zapT -= dt; if (G.zapT <= 0) { G.zapT = 4; for (let i = 0; i < up('zapper') && G.bugs.length; i++) { const b = G.bugs[Math.floor(Math.random() * G.bugs.length)]; kill(b, '⚡'); } sfx('zap'); } }
     if (!G.bugs.length) return;
     const targets = bugTargets();
     G.bugs.forEach(function (b) {
@@ -596,14 +664,14 @@
   }
   function swat(p, ax, ay) {
     if (G.over || G.countdown > 0) return;
-    if (p.scd > 0) return; p.scd = 0.28;
-    const R = 1.05 + 0.4 * up('swatter');
+    if (p.scd > 0) return; p.scd = 0.2;
+    const R = 1.5 + 0.45 * up('swatter');
     let n = 0;
     G.bugs.slice().forEach(function (b) {
       const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy);
       const inFront = dx * p.dx + dy * p.dy > -0.15;
       let hitIt = false;
-      if (ax != null) hitIt = Math.hypot(b.x - ax, b.y - ay) < 0.75 && d < 4.5; else hitIt = d < R && inFront;
+      if (ax != null) hitIt = Math.hypot(b.x - ax, b.y - ay) < 1.0 && d < 6; else hitIt = d < R && inFront;
       if (hitIt) { b.hp--; if (b.hp <= 0) { kill(b); n++; } else { splat(b); sfx('squish'); } }
     });
     p.swing = 0.2;
@@ -636,6 +704,14 @@
     const lv = G.lv, st = lv.stars || [100, 250, 450];
     const stars = G.score >= st[2] ? 3 : G.score >= st[1] ? 2 : G.score >= st[0] ? 1 : 0;
     G.result = { score: G.score, stars: stars, delivered: G.delivered, failed: G.failed, tips: G.tips, bestCombo: G.bestCombo, need: st, time: Math.round(G.time), burnt: G.burnt, dishes: G.dishCount, cash: G.cash, killed: G.killed };
+    if (G.versus) {
+      const rank = G.players.map(function (q, i) { return { i: i, name: q.name, color: q.color, hat: q.hat, score: G.pscore[i], del: G.pdel[i] }; }).sort(function (a, b) { return b.score - a.score || b.del - a.del; });
+      let teams = null;
+      if (G.versus === 'teams') teams = [0, 1].map(function (t) { const m = rank.filter(function (r) { return r.i % 2 === t; }); return { t: t, score: m.reduce(function (s, r) { return s + r.score; }, 0), del: m.reduce(function (s, r) { return s + r.del; }, 0), members: m.map(function (r) { return r.name; }) }; }).sort(function (a, b) { return b.score - a.score; });
+      G.result.versus = { mode: G.versus, rank: rank, teams: teams, goal: lv.goal || 0, winner: G.winner };
+      G.result.stars = 0; G.result.need = [0, 0, 0];
+      sfx('win'); return;
+    }
     sfx(stars ? 'win' : 'lose');
   }
   E.finish = function () { if (G && !G.over) finish(); };
@@ -668,6 +744,7 @@
     }
     G.cash -= price; G.up[id] = lvl + 1;
     if (id === 'plates') { const r = findTile('rack'); if (r) r.n += 2; }
+    if (id === 'spares') { const r = findTile('utrack'); if (!r) { G.cash += price; G.up[id] = lvl; toast('Sem prateleira de utensílios nesta fase', 'bad'); return false; } const ks = {}; G.grid.forEach(function (row) { row.forEach(function (t) { if (t && t.k === 'app' && CC.UT[t.kind]) ks[t.kind] = 1; }); }); Object.keys(ks).forEach(function (k) { r.items.push(CC.mkUt(k)); }); }
     if (id === 'spray') { G.bugs.forEach(function (b) { splat(b); }); G.killed += G.bugs.length; G.bugs = []; G.immune = 45; sfx('spray'); }
     else sfx('buy');
     toast(it.e + ' ' + it.n + ' comprado!', 'ok');
@@ -721,6 +798,7 @@
   function setsFor(i) { return G.players.length === 1 || G.client ? [MAPS[0], MAPS[1]] : [MAPS[i]]; }
   function press(p, kind) {
     if (G.client) { if (p.id === G.myIdx) outbox.push(kind); return; }
+    if (p.stun > 0) return;
     if (kind === 'i') interact(p);
     else if (kind === 'd') { if (p.dcd <= 0 && !G.paused) { p.dash = 0.16; p.dcd = 1.1 * (1 - 0.2 * up('dashcd')); sfx('dash'); } }
     else if (kind === 's') swat(p);

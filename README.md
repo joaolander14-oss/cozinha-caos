@@ -6,6 +6,8 @@ Jogo de cozinha cooperativo no estilo Overcooked, feito em HTML/JS com React (se
 - **22 fases** de campanha + Modo Infinito, Desafio do Dia, Restaurante Personalizado e Treino Livre
 - **Até 4 jogadores no mesmo computador** (teclado e/ou controles) e **online** (PeerJS/WebRTC, sala por código)
 - **Fast Food** e **Salão** com várias janelas de entrega (cada pedido vai na janela certa), **estoque** que acaba, **computador** para chamar o caminhão (4 caixas × 4 unidades) e **loja** de melhorias (bandeja, carrinho de pratos, lava-louças…)
+- **Utensílios**: cada equipamento precisa do seu recipiente (panela, frigideira, wok, cesto, jarra…). Eles se carregam como pratos, sujam depois de alguns usos e precisam ser lavados na pia; há uma prateleira de utensílios limpos
+- **Competição entre chefs**: Duelo de Chefs, Corrida de Pedidos e Batalha de Equipes (2 a 4 chefs, local ou online), com placar, ranking e dash que derruba o rival
 - **Modo Infestação**: baratas, moscas, formigas, besouros, vespas e lagartas invadem a cozinha e estragam comida e estoque (mate com **R** ou clicando). Também há **Restaurante Entomológico** (cardápio de insetos) e **Noite de Apagões**
 - **Meu Restaurante** com ~20 configurações: velocidade do jogo, vidas, VIP, queima, estoque e preços, caminhão, janelas, pragas, rush, apagões, tamanho da cozinha…
 - **Loja com 22 melhorias** (mata-moscas, lâmpada mata-insetos, telas, inseticida, geladeira grande, relógio extra, gerador…)

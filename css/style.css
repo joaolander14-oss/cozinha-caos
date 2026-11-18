@@ -149,3 +149,11 @@ label.chk{flex-direction:row!important;align-items:center;gap:8px!important}
 .opts2 h4{margin:14px 0 2px;color:var(--acc2);font-size:14px}
 .opts2{max-height:78vh;overflow:auto}
 .banner.dark{top:58px}
+
+.scoreboard{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sbrow{display:flex;align-items:center;gap:5px;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:2px 8px 2px 3px}
+.sbrow .chefico{width:26px;height:26px;font-size:14px}.sbs{font-weight:800;color:var(--acc2)}.sbg{font-size:11px;color:var(--mut)}
+.sbteam{font-weight:800;font-size:16px;padding:3px 10px;border-radius:10px}.sbteam.t0{background:#b71c1caa}.sbteam.t1{background:#1a3a9eaa}
+.versus{margin:10px 0}.vrow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;background:var(--panel2);margin:5px 0}
+.vrow.win{background:#5a4a14;border:2px solid var(--acc2)}.vm{font-size:22px;width:34px}.vn{font-weight:700;flex:1;text-align:left}.vd{color:var(--mut);font-size:13px}.vs{font-weight:800;color:var(--acc2)}
+.vteams{display:flex;gap:10px;margin-bottom:8px}.vt{flex:1;background:var(--panel2);border-radius:12px;padding:8px;font-weight:700}.vt.win{border:2px solid var(--acc2);background:#5a4a14}

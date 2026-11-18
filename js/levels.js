@@ -102,8 +102,12 @@
     const cutThings = [];
     for (let i = 0; i < boards; i++) cutThings.push('board');
     Object.keys(need.cuts || {}).forEach(function (k) { if (k === 'board') return; for (let i = 0; i < (big ? 2 : 1); i++) cutThings.push(k); });
+    const utOn = lv.utensils !== false && !(lv.cfg && lv.cfg.utensils === false);
+    const utKinds = {};
+    apps.forEach(function (a) { if (utOn && CC.UT[a]) utKinds[a] = 1; });
     // itens especiais: computador, doca, janelas extras
     const specials = [];
+    if (Object.keys(utKinds).length) specials.push({ sp: 'utrack' });
     if (lv.pc !== false && (lv.stock || lv.shop !== false)) specials.push({ sp: 'pc' });
     if (lv.stock) specials.push({ sp: 'dock' });
     if (lv.pantry) { specials.push({ sp: 'pantry' }); specials.push({ sp: 'pantry' }); }
@@ -126,7 +130,7 @@
     ['T', 'W', 'K', 'D', 'X'].forEach(function (c, i) {
       const s = L.left[i + 1];
       if (c === 'T') put(s, { k: 'trash' });
-      if (c === 'W') put(s, { k: 'sink', dirty: 0, clean: 0, prog: 0 });
+      if (c === 'W') put(s, { k: 'sink', dirty: 0, clean: 0, prog: 0, duts: [] });
       if (c === 'K') put(s, { k: 'rack', n: lv.plates });
       if (c === 'D') put(s, { k: 'ret', dirty: 0 });
       if (c === 'X') put(s, { k: 'serve', flash: 0, win: 0 });
@@ -134,6 +138,7 @@
     const mkItem = function (o) {
       if (o.id) return { k: 'crate', id: o.id };
       if (o.sp === 'pc') return { k: 'pc' };
+      if (o.sp === 'utrack') return { k: 'utrack', items: Object.keys(utKinds).map(function (k) { return CC.mkUt(k); }), sel: null };
       if (o.sp === 'pantry') return { k: 'pantry' };
       if (o.sp === 'dock') return { k: 'dock', boxes: [], flash: 0 };
       return { k: 'serve', flash: 0, win: o.win };
@@ -141,7 +146,7 @@
     const cCap = L.top.length + L.bot.length + L.leftFree.length;
     const nMain = Math.min(items.length, Math.max(0, cCap - 2));
     spread(L.top.concat(L.bot, L.leftFree), nMain).forEach(function (s, i) { put(s, mkItem(items[i])); });
-    const mk = function (kind) { return { k: 'app', kind: kind, items: [], st: 'idle', prog: 0, rec: null, out: null, burn: 0, grace: 0 }; };
+    const mk = function (kind) { return { k: 'app', kind: kind, ut: utKinds[kind] ? CC.mkUt(kind) : null, items: [], st: 'idle', prog: 0, rec: null, out: null, burn: 0, grace: 0 }; };
     const things = apps.map(function (a) { return { app: a }; });
     items.slice(nMain).forEach(function (o, i) { things.splice(Math.min(things.length, 2 + i * 2), 0, { item: o }); });
     cutThings.forEach(function (k, i) { things.splice(Math.min(things.length, 1 + i * 3), 0, { cut: k }); });
@@ -277,6 +282,18 @@
     const menu = pick(CLASSIC, 16, 2077);
     return prep({ id: 'blackout', nome: 'Noite de Apagões', e: '💡', cor: '#1a237e', tip: 'A luz cai de vez em quando — só os chefs têm lanterna! No rush os pedidos aceleram. Compre um gerador na loja.', menu: menu, tempo: 300, int: [14, 19], max: 5, pat: 1.1, layout: 'ilha', plates: 6, seasP: 0.3, windows: 1, cash: 100, cfg: { dark: true, rush: true }, extra: autoExtra(menu), w: 17, h: 10 });
   };
+  CC.makeDuel = function () {
+    const menu = pick(CLASSIC, 14, 8080);
+    return prep({ id: 'duel', nome: 'Duelo de Chefs', e: '⚔️', cor: '#b71c1c', tip: 'Todos contra todos! Cada prato entregue vale pontos para QUEM entregou. Dash em outro chef derruba ele por um instante. Maior pontuação vence!', menu: menu, tempo: 240, int: [8, 12], max: 6, pat: 0.8, layout: 'livre', plates: 6, seasP: 0.2, shop: false, versus: 'ffa', minPlayers: 2, cfg: { pvp: true, tips: true }, extra: autoExtra(menu), w: 17, h: 10 });
+  };
+  CC.makeRace = function () {
+    const menu = pick(CLASSIC, 12, 9191);
+    return prep({ id: 'race', nome: 'Corrida de Pedidos', e: '🏁', cor: '#f57f17', tip: 'O primeiro chef a entregar 8 pratos vence a corrida! Os pedidos são de todos — seja mais rápido que os outros.', menu: menu, tempo: 420, goal: 8, int: [7, 10], max: 6, pat: 0.85, layout: 'ilha', plates: 6, seasP: 0.2, shop: false, versus: 'ffa', minPlayers: 2, cfg: { pvp: true }, extra: autoExtra(menu), w: 17, h: 10 });
+  };
+  CC.makeTeams = function () {
+    const menu = pick(CLASSIC, 16, 7007);
+    return prep({ id: 'teams', nome: 'Batalha de Equipes', e: '🛡️', cor: '#283593', tip: 'Equipe 🔴 (chefs 1 e 3) contra equipe 🔵 (chefs 2 e 4). A equipe que somar mais pontos vence. Dash derruba os rivais!', menu: menu, tempo: 300, int: [8, 12], max: 7, pat: 0.8, layout: 'divisao', plates: 7, seasP: 0.25, shop: false, versus: 'teams', minPlayers: 2, cfg: { pvp: true }, extra: autoExtra(menu), w: 19, h: 11 });
+  };
   CC.dailyKey = CC.dailyKey;
   const baseCustom = CC.makeCustom;
   CC.makeCustom = function (cfg) {
@@ -285,7 +302,8 @@
     if (cfg.stock) { lv.stock = { initial: cfg.stockInit || 8 }; lv.cash = 400; }
     lv.shop = cfg.shop !== false;
     lv.lives = lv.endless ? (cfg.lives || 3) : (cfg.lives || 0);
-    lv.cfg = { bugs: cfg.bugs || 0, speed: cfg.speed || 1, burn: cfg.burn != null ? cfg.burn : 1, vip: cfg.vip != null ? cfg.vip : 0.08, rush: !!cfg.rush, dark: !!cfg.dark, priceMul: cfg.priceMul || 1, truckMul: cfg.truckMul || 1, chef: cfg.chef || 1, noCollide: !!cfg.noCollide, tips: cfg.tips !== false };
+    if (cfg.versus && cfg.versus !== 'coop') { lv.versus = cfg.versus; lv.minPlayers = 2; lv.goal = cfg.goal || 0; }
+    lv.cfg = { utensils: cfg.utensils !== false, utUses: cfg.utUses || 1, pvp: !!cfg.pvp, bugs: cfg.bugs || 0, speed: cfg.speed || 1, burn: cfg.burn != null ? cfg.burn : 1, vip: cfg.vip != null ? cfg.vip : 0.08, rush: !!cfg.rush, dark: !!cfg.dark, priceMul: cfg.priceMul || 1, truckMul: cfg.truckMul || 1, chef: cfg.chef || 1, noCollide: !!cfg.noCollide, tips: cfg.tips !== false };
     const SZ = { small: [13, 8], medium: [15, 9], large: [19, 11], huge: [23, 13] }, z = SZ[cfg.size || 'medium'];
     lv.w = z[0]; lv.h = z[1];
     if (cfg.cash != null) lv.cash = cfg.cash;
