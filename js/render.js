@@ -400,7 +400,7 @@
       const d = R._dk.getContext('2d'); d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, W, H);
       d.fillStyle = 'rgba(2,3,10,' + Math.min(0.94, G.dark * 1.2) + ')'; d.fillRect(0, 0, W, H);
       d.globalCompositeOperation = 'destination-out';
-      G.players.forEach(function (p) { const g = d.createRadialGradient(p.x * TS, p.y * TS, 12, p.x * TS, p.y * TS, TS * 3.3); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = g; d.beginPath(); d.arc(p.x * TS, p.y * TS, TS * 3.3, 0, 7); d.fill(); });
+      G.players.forEach(function (p) { const g = d.createRadialGradient(p.x * TS, p.y * TS, 12, p.x * TS, p.y * TS, TS * (3.3 + 0.8 * ((G.up && G.up.lights) || 0))); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = g; d.beginPath(); d.arc(p.x * TS, p.y * TS, TS * (3.3 + 0.8 * ((G.up && G.up.lights) || 0)), 0, 7); d.fill(); });
       for (let yy = 0; yy < G.H; yy++) for (let xx = 0; xx < G.W; xx++) { const t = G.grid[yy][xx]; if (t && t.k === 'app' && t.st === 'cook') { const g = d.createRadialGradient((xx + .5) * TS, (yy + .5) * TS, 4, (xx + .5) * TS, (yy + .5) * TS, TS * 1.4); g.addColorStop(0, 'rgba(0,0,0,.8)'); g.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = g; d.beginPath(); d.arc((xx + .5) * TS, (yy + .5) * TS, TS * 1.4, 0, 7); d.fill(); } }
       c.drawImage(R._dk, 0, 0);
     }

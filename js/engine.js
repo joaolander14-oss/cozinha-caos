@@ -46,6 +46,16 @@
   function utMax(k) { return Math.max(1, Math.round((CC.UT[k].uses + 2 * up('durable')) * cfg('utUses', 1))); }
   CC.utMax = utMax;
   function isUt(h) { return !!(h && h.ut); }
+  Object.assign(CC.SHOP, {
+    bonus: { n: 'Cartão fidelidade', e: '💳', d: 'Bônus de combo +50% por nível', cost: [120, 220, 360] },
+    vipmag: { n: 'Atrair clientes VIP', e: '🎩', d: '+8% de chance de pedidos VIP por nível (se VIPs estiverem ligados)', cost: [150, 260, 420] },
+    waiter: { n: 'Garçom ágil', e: '🏃', d: 'Pratos sujos voltam 25% mais rápido por nível', cost: [90, 160, 260] },
+    contract: { n: 'Contrato com fornecedor', e: '🤝', d: 'Estoque 10% mais barato por nível', cost: [110, 200, 330] },
+    boxsize: { n: 'Caixas maiores', e: '📦', d: '+1 unidade em cada caixa do caminhão, por nível', cost: [100, 190, 300] },
+    autostock: { n: 'Reposição automática', e: '🔁', d: 'Pede sozinho o ingrediente mais baixo (a cada ~45s, 33s, 21s)', cost: [160, 280, 440] },
+    lights: { n: 'Lanternas potentes', e: '🔦', d: 'Os chefs enxergam mais longe nos apagões', cost: [80, 140, 230] },
+    insurance: { n: 'Seguro de pedidos', e: '🛡️', d: 'Pedidos perdidos custam 30% menos por nível', cost: [100, 180, 300] }
+  });
   function cfg(k, d) { return (G && G.cfg && G.cfg[k] != null) ? G.cfg[k] : d; }
   function up(k) { return (G && G.up && G.up[k]) || 0; }
 
@@ -163,6 +173,7 @@
       W: G.W, H: G.H, grid: grid, ev: ev,
       score: G.score, left: G.left, time: G.time, combo: G.combo, delivered: G.delivered, failed: G.failed, over: G.over, countdown: G.countdown, lives: G.lives, tips: G.tips, bestCombo: G.bestCombo,
       cash: G.cash, stock: G.stock, up: G.up, stockOn: G.stockOn, shopOn: G.shopOn, nwin: G.nwin, trucks: G.trucks.map(function (t) { return { t: t.t, n: t.boxes.length }; }),
+      bc: costMap(), td: E.truckDelay(), bu: E.boxUnits(),
       utOn: G.utOn, versus: G.versus, pscore: G.pscore, pdel: G.pdel,
       rush: G.rush, dark: G.dark, killed: G.killed, bugs: G.bugs.map(function (b) { return { id: b.id, k: b.k, x: b.x, y: b.y, a: b.a }; }), cfgBugs: cfg('bugs', 0),
       result: G.result || null,
@@ -174,7 +185,7 @@
     G.W = s.W; G.H = s.H; G.grid = s.grid;
     G.score = s.score; G.left = s.left; G.time = s.time; G.combo = s.combo; G.delivered = s.delivered; G.failed = s.failed; G.over = s.over; G.countdown = s.countdown; G.lives = s.lives; G.tips = s.tips; G.bestCombo = s.bestCombo;
     if (s.result) G.result = s.result;
-    G.cash = s.cash; G.stock = s.stock; G.up = s.up; G.stockOn = s.stockOn; G.shopOn = s.shopOn; G.nwin = s.nwin; G.trucks = s.trucks; G.rush = s.rush; G.dark = s.dark; G.killed = s.killed; G.cfgBugs = s.cfgBugs; G.utOn = s.utOn; G.versus = s.versus; G.pscore = s.pscore; G.pdel = s.pdel;
+    G.cash = s.cash; G.stock = s.stock; G.up = s.up; G.stockOn = s.stockOn; G.shopOn = s.shopOn; G.nwin = s.nwin; G.trucks = s.trucks; G.rush = s.rush; G.dark = s.dark; G.killed = s.killed; G.cfgBugs = s.cfgBugs; G.utOn = s.utOn; G.bc = s.bc; G.td = s.td; G.bu = s.bu; G.versus = s.versus; G.pscore = s.pscore; G.pdel = s.pdel;
     (function () {
       const old = {}; (G.bugs || []).forEach(function (b) { old[b.id] = b; });
       G.bugs = (s.bugs || []).map(function (q) { const b = old[q.id] || { id: q.id, k: q.k, x: q.x, y: q.y }; b.k = q.k; b.tx = q.x; b.ty = q.y; b.a = q.a; return b; });
@@ -215,6 +226,7 @@
     return {
       score: G.score, left: G.left, time: G.time, combo: G.combo, delivered: G.delivered, failed: G.failed, over: G.over, countdown: G.countdown, lives: G.lives, endless: !!G.lv.endless,
       cash: G.cash, stock: G.stock, up: G.up, stockOn: G.stockOn, shopOn: G.shopOn, nwin: G.nwin, stockIds: G.stockIds, trucks: G.trucks ? G.trucks.map(function (t) { return { t: t.t, n: t.boxes.length }; }) : [],
+      bc: G.client ? G.bc : costMap(), td: G.client ? G.td : E.truckDelay(), bu: G.client ? G.bu : E.boxUnits(),
       versus: G.versus, goal: G.lv.goal || 0, pscore: G.pscore, pdel: G.pdel, pl: G.players.map(function (q, i) { return { n: q.name, c: q.color, h: q.hat }; }),
       rush: G.rush, dark: G.dark, killed: G.killed, bugsN: G.bugs ? G.bugs.length : 0, cfgBugs: G.client ? G.cfgBugs : cfg('bugs', 0), lvives: G.lives,
       orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, t: o.t, tmax: o.tmax, seas: o.seas, vip: o.vip, win: o.win }; }),
@@ -237,7 +249,7 @@
     if (lv.seasP > 0 && d.seas.length && Math.random() < lv.seasP) seas.push(d.seas[Math.floor(Math.random() * d.seas.length)]);
     const players = G.players.length;
     const tmax = Math.round(d.time * lv.pat * (1 + 0.12 * up('patience')) * (players === 1 ? 1.15 : 1) * (lv.endless ? Math.max(0.55, 1 - G.time / 900) : 1));
-    const vip = !lv.practice && Math.random() < cfg('vip', 0.08);
+    const vp = cfg('vip', 0.08), vip = !lv.practice && Math.random() < (vp > 0 ? Math.min(0.6, vp + 0.08 * up('vipmag')) : 0);
     G.orders.push({ id: G.oid++, dish: d, seas: seas, t: tmax, tmax: tmax, vip: vip, win: G.nwin > 1 ? Math.floor(Math.random() * G.nwin) : 0 });
     sfx('order');
   }
@@ -261,7 +273,7 @@
     let cmb;
     if (G.versus) { G.pcombo[p.id] = (G.pcombo[p.id] || 0) + 1; cmb = G.pcombo[p.id]; G.combo = cmb; } else { G.combo++; cmb = G.combo; }
     G.bestCombo = Math.max(G.bestCombo, G.combo); G.dishCount[best.dish.id] = (G.dishCount[best.dish.id] || 0) + 1;
-    const cb = Math.min(cmb - 1, 6) * 3;
+    const cb = Math.round(Math.min(cmb - 1, 6) * 3 * (1 + 0.5 * up('bonus')));
     const pts = Math.round((base + tip + cb) * (best.vip ? 2 : 1) * (G.rush > 0 ? 1.5 : 1));
     G.score += pts; G.cash += pts; G.tips += tip; G.delivered++;
     if (G.versus) { G.pscore[p.id] += pts; G.pdel[p.id]++; }
@@ -270,7 +282,7 @@
     toast(best.dish.n + ' entregue! +' + pts, 'ok');
     sfx('ding'); sfx('coin');
     tile.flash = 0.6;
-    G.pending.push({ t: 6 + Math.random() * 3 });
+    G.pending.push({ t: (6 + Math.random() * 3) * Math.pow(0.75, up('waiter')) });
     if (G.versus && G.lv.goal && G.pdel[p.id] >= G.lv.goal) { G.winner = p.id; finish(); }
     return true;
   }
@@ -505,6 +517,7 @@
     if (G.countdown > 0) { G.countdown -= dt; if (G.countdown < 0) G.countdown = 0; return; }
     dt *= cfg('speed', 1);
     const lv = G.lv;
+    if (!G.started) { G.started = true; for (let i = 0; i < (lv.initial || 0) && G.orders.length < lv.max; i++) newOrder(); }
     G.time += dt;
     updateEvents(dt);
     updateBugs(dt);
@@ -520,7 +533,7 @@
       if (o.t <= 0) {
         if (lv.practice) { o.t = o.tmax; continue; }
         G.orders.splice(i, 1); G.failed++; G.combo = 0;
-        const pen = Math.round(o.dish.price * 0.4); G.score = Math.max(0, G.score - pen); G.cash = Math.max(0, G.cash - pen);
+        const pen = Math.round(o.dish.price * 0.4 * (1 - 0.3 * up('insurance'))); G.score = Math.max(0, G.score - pen); G.cash = Math.max(0, G.cash - pen);
         toast('Pedido perdido: ' + o.dish.n + ' (-' + pen + ')', 'bad'); sfx('fail'); G.shake = 0.3;
         if (lv.lives) { G.lives--; if (G.lives <= 0) return finish(); }
       }
@@ -549,6 +562,15 @@
       if (t.k === 'app') updateApp(t, dt);
       if (t.k === 'sink' && up('auto') && (t.dirty > 0 || (t.duts && t.duts.length))) { t.auto = (t.auto || 0) + dt; if (t.auto >= 9 - 3 * up('auto')) { t.auto = 0; if (t.dirty > 0) { t.dirty--; t.clean++; } else { const u = t.duts.shift(); u.uses = 0; u.dirty = false; const rk = findTile('utrack'); if (rk) rk.items.push(u); } } }
       if (t.flash > 0) t.flash -= dt;
+    }
+    // reposição automática
+    if (up('autostock') && G.stockOn) {
+      G.autoT = (G.autoT == null ? 30 : G.autoT) - dt;
+      if (G.autoT <= 0) {
+        G.autoT = 55 - 12 * up('autostock');
+        const ids = G.stockIds.slice().sort(function (a, b) { return G.stock[a] - G.stock[b]; }), id = ids[0];
+        if (id != null && G.stock[id] < 4 && findTile('dock')) { const c = E.boxCost(id); if (G.cash >= c) { G.cash -= c; G.trucks.push({ t: E.truckDelay(), boxes: [{ id: id, n: E.boxUnits() }] }); toast('🔁 Reposição automática: ' + ITEMS[id].n, 'ok'); } }
+      }
     }
     // caminhões de estoque
     for (let i = G.trucks.length - 1; i >= 0; i--) {
@@ -717,7 +739,9 @@
   E.finish = function () { if (G && !G.over) finish(); };
   /* computador: pedir estoque e comprar melhorias (rodam no anfitrião) */
   E.maxBoxes = function () { return Math.min(6, 4 + up('boxes')); };
-  E.boxCost = function (id) { return Math.max(1, Math.round(CC.priceOf(id) * 4 * cfg('priceMul', 1))); };
+  E.boxCost = function (id) { return Math.max(1, Math.round(CC.priceOf(id) * 4 * cfg('priceMul', 1) * (1 - 0.1 * up('contract')))); };
+  E.boxUnits = function () { return 4 + up('boxsize'); };
+  function costMap() { const m = {}; (G.stockIds || []).forEach(function (id) { m[id] = E.boxCost(id); }); return m; }
   E.truckDelay = function () { return Math.max(4, Math.round(26 * cfg('truckMul', 1) * Math.pow(0.88, up('express')))); };
   E.pcOrder = function (idx, ids) {
     if (!G || G.over || !G.stockOn) return false;
@@ -727,7 +751,7 @@
     if (cost > G.cash) { sfx('nobuy'); toast('Dinheiro insuficiente para o pedido', 'bad'); return false; }
     if (!findTile('dock')) return false;
     G.cash -= cost;
-    G.trucks.push({ t: E.truckDelay(), boxes: ids.map(function (id) { return { id: id, n: 4 }; }) });
+    G.trucks.push({ t: E.truckDelay(), boxes: ids.map(function (id) { return { id: id, n: E.boxUnits() }; }) });
     sfx('buy'); toast('📦 Pedido enviado (-' + cost + '). O caminhão chega em ' + E.truckDelay() + 's', 'ok');
     return true;
   };

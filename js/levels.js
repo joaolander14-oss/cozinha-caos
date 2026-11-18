@@ -307,6 +307,10 @@
     const SZ = { small: [13, 8], medium: [15, 9], large: [19, 11], huge: [23, 13] }, z = SZ[cfg.size || 'medium'];
     lv.w = z[0]; lv.h = z[1];
     if (cfg.cash != null) lv.cash = cfg.cash;
+    if (cfg.maxOrders) lv.max = cfg.maxOrders;
+    if (cfg.interval && cfg.interval !== 1) lv.int = [lv.int[0] * cfg.interval, lv.int[1] * cfg.interval];
+    if (cfg.patience && cfg.patience !== 1) lv.pat = lv.pat * cfg.patience;
+    if (cfg.initial) lv.initial = cfg.initial;
     return lv;
   };
 })(window.CC);

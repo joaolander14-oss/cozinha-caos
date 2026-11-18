@@ -157,3 +157,6 @@ label.chk{flex-direction:row!important;align-items:center;gap:8px!important}
 .versus{margin:10px 0}.vrow{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:10px;background:var(--panel2);margin:5px 0}
 .vrow.win{background:#5a4a14;border:2px solid var(--acc2)}.vm{font-size:22px;width:34px}.vn{font-weight:700;flex:1;text-align:left}.vd{color:var(--mut);font-size:13px}.vs{font-weight:800;color:var(--acc2)}
 .vteams{display:flex;gap:10px;margin-bottom:8px}.vt{flex:1;background:var(--panel2);border-radius:12px;padding:8px;font-weight:700}.vt.win{border:2px solid var(--acc2);background:#5a4a14}
+
+.modsbar{margin-bottom:12px}.modspanel{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px 18px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:8px}
+.modspanel label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--mut)}.modspanel .sub{grid-column:1/-1}.btn.on{border-color:var(--acc2);color:var(--acc2)}

@@ -10,7 +10,7 @@
   const SAVE_KEY = 'cozinha_caos.v1';
   const HATS = ['toque', '🧢', '👑', '🎩', '🎓', '👒', '🪖', '🌟'];
   const DEF = function () {
-    return { stars: {}, best: {}, sound: true, unlock: false, players: 1, name: 'Chef', skins: [0, 1, 2, 3].map(function (i) { return { color: CC.COLS[i], hat: 'toque' }; }),
+    return { mods: { max: 0, interval: 1, pat: 1, initial: 0 }, stars: {}, best: {}, sound: true, unlock: false, players: 1, name: 'Chef', skins: [0, 1, 2, 3].map(function (i) { return { color: CC.COLS[i], hat: 'toque' }; }),
       stats: { delivered: 0, matches: 0, online: 0, bestScore: 0, cats: {}, dishes: {}, endlessBest: 0 }, ach: {}, daily: {}, custom: null };
   };
   function loadSave() {
@@ -117,10 +117,10 @@
     const ts = useState(sn.stockOn ? 'stock' : 'shop'), tab = ts[0], setTab = ts[1];
     const ss = useState([]), slots = ss[0], setSlots = ss[1];
     const qs = useState(''), q = qs[0], setQ = qs[1];
-    const maxB = Math.min(6, 4 + (up.boxes || 0)), delay = Math.round(26 * Math.pow(0.88, up.express || 0));
+    const maxB = Math.min(6, 4 + (up.boxes || 0)), delay = sn.td || 26, units = sn.bu || 4, bcost = function (id) { return (sn.bc && sn.bc[id] != null) ? sn.bc[id] : CC.priceOf(id) * 4; };
     const ids = (sn.stockIds || []).slice().sort(function (a, b) { return ITEMS[a].n < ITEMS[b].n ? -1 : 1; });
     const shown = ids.filter(function (id) { return !q || ITEMS[id].n.toLowerCase().indexOf(q.toLowerCase()) >= 0; });
-    const cost = slots.reduce(function (s, id) { return s + CC.priceOf(id) * 4; }, 0);
+    const cost = slots.reduce(function (s, id) { return s + bcost(id); }, 0);
     const add = function (id) { if (slots.length < maxB) { setSlots(slots.concat([id])); CC.Sound.sfx('click'); } };
     const refill = function () {
       const low = ids.slice().sort(function (a, b) { return (sn.stock[a] || 0) - (sn.stock[b] || 0); }).slice(0, maxB);
@@ -132,14 +132,14 @@
         div({ className: 'ingrid' }, shown.map(function (id) {
           const n = sn.stock[id] || 0;
           return div({ key: id, className: 'ingcard' + (n <= 0 ? ' zero' : n < 3 ? ' low' : ''), onClick: function () { add(id); } },
-            h(Em, { e: ITEMS[id].e, size: 26 }), div({ className: 'ingn' }, ITEMS[id].n), div({ className: 'ings' }, 'Estoque: ', span({ className: 'sv' }, n)), div({ className: 'ingp' }, '💵 ' + CC.priceOf(id) * 4 + ' /caixa'));
+            h(Em, { e: ITEMS[id].e, size: 26 }), div({ className: 'ingn' }, ITEMS[id].n), div({ className: 'ings' }, 'Estoque: ', span({ className: 'sv' }, n)), div({ className: 'ingp' }, '💵 ' + bcost(id) + ' /caixa de ' + units));
         }))),
       div({ className: 'pcright' },
         h('h3', null, '🚚 Novo pedido (' + slots.length + '/' + maxB + ' caixas)'),
-        div({ className: 'sub pad' }, 'Cada caixa traz 4 unidades do ingrediente escolhido. O caminhão leva ~' + delay + 's.'),
+        div({ className: 'sub pad' }, 'Cada caixa traz ' + units + ' unidades do ingrediente escolhido. O caminhão leva ~' + delay + 's.'),
         div({ className: 'slots' }, Array.from({ length: maxB }, function (_, i) {
           const id = slots[i];
-          return div({ key: i, className: 'slot' + (id ? ' full' : '') }, id ? [h(Em, { key: 'e', e: ITEMS[id].e, size: 28 }), div({ key: 'n', className: 'ingn' }, ITEMS[id].n), div({ key: 'p', className: 'ingp' }, '4× • 💵 ' + CC.priceOf(id) * 4),
+          return div({ key: i, className: 'slot' + (id ? ' full' : '') }, id ? [h(Em, { key: 'e', e: ITEMS[id].e, size: 28 }), div({ key: 'n', className: 'ingn' }, ITEMS[id].n), div({ key: 'p', className: 'ingp' }, units + '× • 💵 ' + bcost(id)),
             button({ key: 'x', className: 'xbtn', onClick: function () { setSlots(slots.filter(function (_, j) { return j !== i; })); } }, '✕')] : div({ className: 'sub' }, 'Caixa ' + (i + 1) + ' vazia'));
         })),
         div({ className: 'row' }, button({ className: 'btn sm', onClick: refill }, '🧠 Repor os mais baixos'), button({ className: 'btn sm', onClick: function () { setSlots([]); } }, '🧹 Limpar')),
@@ -215,7 +215,7 @@
     const doOrder = function (ids) { if (mode === 'guest') MP.send({ t: 'cmd', c: 'order', ids: ids }); else CC.Engine.pcOrder(0, ids); };
     const doBuy = function (id) { if (mode === 'guest') MP.send({ t: 'cmd', c: 'buy', id: id }); else CC.Engine.shopBuy(0, id); };
     const res = snap && snap.result;
-    const next = typeof lv.id === 'number' ? CC.LEVELS[CC.LEVELS.indexOf(lv) + 1] : null;
+    const next = typeof lv.id === 'number' ? CC.LEVELS[CC.LEVELS.findIndex(function (l) { return l.id === lv.id; }) + 1] : null;
     const pl = online ? MP.players : null;
     const nlocal = p.players;
     return div({ className: 'game' },
@@ -270,6 +270,32 @@
           button({ className: 'btn', onClick: function () { if (mode === 'host') MP.hostGameEnded(); p.onExit(); } }, online ? '🚪 Voltar à sala' : '☰ Fases')))) : null);
   }
 
+  /* ---------- ajustes de pedidos (valem para qualquer modo) ---------- */
+  const MODS0 = { max: 0, interval: 1, pat: 1, initial: 0 };
+  function applyMods(lv, m) {
+    if (!m || (!m.max && !m.initial && (m.interval || 1) === 1 && (m.pat || 1) === 1)) return lv;
+    const l = Object.assign({}, lv); l.modded = true; l.baseId = lv.id;
+    if (m.max) l.max = m.max;
+    l.int = [lv.int[0] * (m.interval || 1), lv.int[1] * (m.interval || 1)]; l.pat = lv.pat * (m.pat || 1);
+    if (m.initial) l.initial = m.initial;
+    return l;
+  }
+  function OrderMods(p) {
+    const m = Object.assign({}, MODS0, p.mods || {}), os = useState(false), open = os[0], setOpen = os[1];
+    const set = function (k, v) { const n = Object.assign({}, m); n[k] = +v; p.setMods(n); };
+    const sel = function (k, opts) { return select({ value: m[k], onChange: function (e) { set(k, e.target.value); } }, opts.map(function (o) { return option({ key: o[0], value: o[0] }, o[1]); })); };
+    const changed = m.max || m.initial || m.interval !== 1 || m.pat !== 1;
+    return div({ className: 'modsbar' },
+      button({ className: 'btn sm' + (changed ? ' on' : ''), onClick: function () { setOpen(!open); } }, '⚙️ Ajustes de pedidos' + (changed ? ' (ativos)' : '') + (open ? ' ▴' : ' ▾')),
+      open ? div({ className: 'modspanel' },
+        h('label', null, 'Pedidos ao mesmo tempo: ', sel('max', [[0, 'Padrão da fase'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6'], [8, '8'], [10, '10'], [12, '12']])),
+        h('label', null, 'Intervalo entre pedidos: ', sel('interval', [[0.4, 'Muito curto (0,4×)'], [0.6, 'Curto (0,6×)'], [0.8, 'Um pouco menor (0,8×)'], [1, 'Padrão'], [1.3, 'Um pouco maior (1,3×)'], [1.6, 'Longo (1,6×)'], [2, 'Muito longo (2×)'], [3, 'Enorme (3×)']])),
+        h('label', null, 'Duração de cada pedido: ', sel('pat', [[0.4, 'Muito curta (0,4×)'], [0.6, 'Curta (0,6×)'], [0.8, 'Um pouco menor (0,8×)'], [1, 'Padrão'], [1.3, 'Um pouco maior (1,3×)'], [1.6, 'Longa (1,6×)'], [2, 'Muito longa (2×)'], [3, 'Enorme (3×)']])),
+        h('label', null, 'Pedidos já na abertura: ', sel('initial', [[0, 'Padrão'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']])),
+        div({ className: 'sub' }, changed ? 'Com ajustes ativos, estrelas e recordes das fases não são salvos.' : 'Valem para campanha e todos os modos (inclusive online, se você for o anfitrião).'),
+        button({ className: 'btn sm', onClick: function () { p.setMods(Object.assign({}, MODS0)); } }, '↺ Restaurar padrão')) : null);
+  }
+
   /* ---------- fases ---------- */
   function PlayersSeg(p) {
     return div({ className: 'seg' }, [1, 2, 3, 4].map(function (n) { return button({ key: n, className: p.save.players === n ? 'on' : '', onClick: function () { p.setPlayers(n); } }, (n === 1 ? '👤 ' : '👥 ') + n + (n === 1 ? ' jogador' : '')); }));
@@ -280,6 +306,7 @@
     const unlocked = function (i) { return sv.unlock || i === 0 || (sv.stars[camp[i - 1].id] || 0) >= 1; };
     return div({ className: 'screen' },
       div({ className: 'topbar' }, button({ className: 'btn sm', onClick: p.onBack }, '◀ Menu'), h('h1', null, 'Campanha'), h(PlayersSeg, { save: sv, setPlayers: p.setPlayers })),
+      h(OrderMods, { mods: sv.mods, setMods: p.setMods }),
       div({ className: 'lvgrid' }, camp.map(function (lv, i) {
         const ok = unlocked(i), st = sv.stars[lv.id] || 0;
         return div({ key: lv.id, className: 'lvcard' + (ok ? '' : ' locked'), style: { '--c': lv.cor }, onClick: function () { if (ok) p.onPlay(lv); } },
@@ -298,6 +325,7 @@
     const card = function (ico, title, desc, extra, fn, col) { return div({ className: 'lvcard modecard', style: { '--c': col }, onClick: fn }, div({ className: 'lvico' }, h(Em, { e: ico, size: 48 })), div({ className: 'lvname' }, title), div({ className: 'lvmeta' }, desc), extra ? div({ className: 'lvbest' }, extra) : null); };
     return div({ className: 'screen' },
       div({ className: 'topbar' }, button({ className: 'btn sm', onClick: p.onBack }, '◀ Menu'), h('h1', null, 'Modos de jogo'), h(PlayersSeg, { save: sv, setPlayers: p.setPlayers })),
+      h(OrderMods, { mods: sv.mods, setMods: p.setMods }),
       div({ className: 'lvgrid' },
         card('♾️', 'Modo Infinito', 'Sem relógio, 3 vidas ❤️, 2 janelas, estoque e loja. Os pedidos aceleram até o caos.', 'Recorde: ' + (sv.stats.endlessBest || 0), function () { p.onPlay(CC.makeEndless()); }, '#8e44ad'),
         card('📅', 'Desafio do Dia', 'Cardápio e cozinha iguais para todos hoje.', sv.daily[dk] ? 'Melhor de hoje: ' + sv.daily[dk] : 'Ainda não jogado hoje', function () { p.onPlay(CC.makeDaily()); }, '#e67e22'),
@@ -316,7 +344,7 @@
 
   /* ---------- restaurante personalizado ---------- */
   function Custom(p) {
-    const init = Object.assign({ ids: ['hamburguer', 'batata_frita', 'suco_laranja', 'pizza_marg', 'sopa_tomate', 'bolo'], tempo: 240, pace: 1, layout: 'ilha', seasP: 0.3, windows: 1, winStyle: 'fast', size: 'medium', stockInit: 8, priceMul: 1, truckMul: 1, bugs: 0, speed: 1, chef: 1, burn: 1, vip: 0.08, lives: 0, tips: true, rush: false, dark: false, noCollide: false, shop: true, stock: false, utensils: true, utUses: 1, versus: 'coop', pvp: false, goal: 0 }, p.save.custom || {});
+    const init = Object.assign({ ids: ['hamburguer', 'batata_frita', 'suco_laranja', 'pizza_marg', 'sopa_tomate', 'bolo'], tempo: 240, pace: 1, layout: 'ilha', seasP: 0.3, windows: 1, winStyle: 'fast', size: 'medium', stockInit: 8, priceMul: 1, truckMul: 1, bugs: 0, speed: 1, chef: 1, burn: 1, vip: 0.08, lives: 0, tips: true, rush: false, dark: false, noCollide: false, shop: true, stock: false, maxOrders: 0, interval: 1, patience: 1, initial: 0, utensils: true, utUses: 1, versus: 'coop', pvp: false, goal: 0 }, p.save.custom || {});
     const cs = useState(init), cfg = cs[0], setCfg = cs[1];
     const cats = useState('todos'), cat = cats[0], setCat = cats[1];
     const qs = useState(''), q = qs[0], setQ = qs[1];
@@ -335,6 +363,10 @@
           h('h4', null, '⏱️ Ritmo'),
           h('label', null, 'Duração: ', sel('tempo', [[0, '♾️ Infinito'], [120, '2 min'], [180, '3 min'], [240, '4 min'], [300, '5 min'], [480, '8 min'], [720, '12 min']])),
           h('label', null, 'Ritmo dos pedidos: ', sel('pace', [[0, '😌 Tranquilo'], [1, '🙂 Normal'], [2, '😰 Frenético']])),
+          h('label', null, 'Pedidos ao mesmo tempo: ', sel('maxOrders', [[0, 'Automático'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6'], [8, '8'], [10, '10'], [12, '12']])),
+          h('label', null, 'Intervalo entre pedidos: ', sel('interval', [[0.4, 'Muito curto (0,4×)'], [0.6, 'Curto (0,6×)'], [0.8, 'Um pouco menor'], [1, 'Padrão'], [1.3, 'Um pouco maior'], [1.6, 'Longo (1,6×)'], [2, 'Muito longo (2×)'], [3, 'Enorme (3×)']])),
+          h('label', null, 'Duração de cada pedido: ', sel('patience', [[0.4, 'Muito curta (0,4×)'], [0.6, 'Curta (0,6×)'], [0.8, 'Um pouco menor'], [1, 'Padrão'], [1.3, 'Um pouco maior'], [1.6, 'Longa (1,6×)'], [2, 'Muito longa (2×)'], [3, 'Enorme (3×)']])),
+          h('label', null, 'Pedidos já na abertura: ', sel('initial', [[0, 'Nenhum'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']])),
           h('label', null, 'Velocidade do jogo: ', sel('speed', [[0.75, '🐢 Lenta (0,75×)'], [1, 'Normal (1×)'], [1.25, '🐇 Rápida (1,25×)'], [1.5, '🚀 Turbo (1,5×)']])),
           h('label', null, 'Vidas (pedidos perdidos): ', sel('lives', [[0, 'Sem limite'], [1, '1 vida'], [3, '3 vidas'], [5, '5 vidas']])),
           h('label', null, 'Pedidos VIP: ', sel('vip', [[0, 'Nenhum'], [0.08, 'Raros'], [0.2, 'Frequentes'], [0.4, 'Muitos']])),
@@ -529,6 +561,7 @@
             h('li', null, h('b', null, 'Utensílios 🍲: '), 'cada equipamento precisa do seu recipiente (panela, frigideira, wok, cesto, jarra…). Depois de alguns usos ele fica ', h('b', null, 'sujo'), ': pegue-o (mão vazia no equipamento vazio), lave na pia (segure E) e pegue outro limpo na ', h('b', null, 'prateleira de utensílios'), ' (aperte E de frente para ela para escolher o tipo).'),
             h('li', null, h('b', null, 'Competição ⚔️: '), 'nos modos Duelo, Corrida e Equipes, cada entrega vale pontos para quem a fez. Dash num rival o derruba por um instante.'),
             h('li', null, 'Pratos entregues voltam ', h('b', null, 'sujos'), '. Lave na pia (segure E).'),
+            h('li', null, 'Em ⚙️ Ajustes de pedidos (campanha e modos) e em Meu Restaurante você escolhe quantos pedidos aparecem ao mesmo tempo, de quanto em quanto tempo e quanto cada um dura.'),
             h('li', null, 'Gorjetas por rapidez, ', h('b', null, 'combos'), ' por entregas seguidas e pedidos ⭐ VIP que valem o dobro.')))));
   }
 
@@ -560,7 +593,7 @@
     const saveRef = useRef(save); saveRef.current = save;
     CC.sound = save.sound;
     const upd = function (patch) { const n = Object.assign({}, saveRef.current, patch); saveRef.current = n; setSave(n); writeSave(n); };
-    const play = function (lv, mode, init) { setNewAch([]); setLvl(lv); setGm({ mode: mode || 'local', init: init || null }); setScreen('game'); };
+    const play = function (lv0, mode, init) { const lv = (mode === 'guest') ? lv0 : applyMods(lv0, saveRef.current.mods); setNewAch([]); setLvl(lv); setGm({ mode: mode || 'local', init: init || null }); setScreen('game'); };
     const onFinish = function (lv, res, mode) {
       if (lv.practice) return;
       const sv = saveRef.current;
@@ -568,7 +601,7 @@
       stats.delivered += res.delivered; stats.matches++; if (mode !== 'local') stats.online++; stats.bestScore = Math.max(stats.bestScore, res.score);
       Object.keys(res.dishes || {}).forEach(function (id) { stats.dishes[id] = (stats.dishes[id] || 0) + res.dishes[id]; const c = DISHES[id] && DISHES[id].cat; if (c) stats.cats[c] = (stats.cats[c] || 0) + res.dishes[id]; });
       const patch = { stats: stats };
-      if (typeof lv.id === 'number') { const stars = Object.assign({}, sv.stars), best = Object.assign({}, sv.best); stars[lv.id] = Math.max(stars[lv.id] || 0, res.stars); best[lv.id] = Math.max(best[lv.id] || 0, res.score); patch.stars = stars; patch.best = best; }
+      if (typeof lv.id === 'number' && !lv.modded) { const stars = Object.assign({}, sv.stars), best = Object.assign({}, sv.best); stars[lv.id] = Math.max(stars[lv.id] || 0, res.stars); best[lv.id] = Math.max(best[lv.id] || 0, res.score); patch.stars = stars; patch.best = best; }
       if (lv.id === 'endless') stats.endlessBest = Math.max(stats.endlessBest, res.score);
       if (lv.id === 'daily') { const d = Object.assign({}, sv.daily); d[lv.key] = Math.max(d[lv.key] || 0, res.score); patch.daily = d; }
       const tmp = Object.assign({}, sv, patch); const ach = Object.assign({}, sv.ach), got = [];
@@ -579,8 +612,8 @@
     useEffect(function () { window.CC.app = { play: play, setScreen: setScreen }; });
     const leaveRoom = function () { MP.leave(); setScreen('online'); };
     switch (screen) {
-      case 'levels': return h(Levels, { save: save, onBack: gotoMenu, onPlay: function (lv) { play(lv); }, setPlayers: function (n) { upd({ players: n }); } });
-      case 'modes': return h(Modes, { save: save, onBack: gotoMenu, onPlay: function (lv) { play(lv); }, onCustom: function () { setScreen('custom'); }, onOnline: function () { setScreen('online'); }, setPlayers: function (n) { upd({ players: n }); } });
+      case 'levels': return h(Levels, { save: save, onBack: gotoMenu, onPlay: function (lv) { play(lv); }, setPlayers: function (n) { upd({ players: n }); }, setMods: function (m) { upd({ mods: m }); } });
+      case 'modes': return h(Modes, { save: save, onBack: gotoMenu, onPlay: function (lv) { play(lv); }, onCustom: function () { setScreen('custom'); }, onOnline: function () { setScreen('online'); }, setPlayers: function (n) { upd({ players: n }); }, setMods: function (m) { upd({ mods: m }); } });
       case 'custom': return h(Custom, { save: save, onBack: function () { setScreen('modes'); }, onStart: function (cfg) { upd({ custom: cfg }); play(CC.makeCustom(cfg)); } });
       case 'online': return h(Online, { save: save, onBack: function () { MP.leave(); setScreen('modes'); }, onLobby: function () { setScreen('lobby'); } });
       case 'lobby': return h(Lobby, { onLeave: leaveRoom, onClosed: function () { MP.leave(); setScreen('online'); }, onHostStart: function (lv) { play(lv, 'host'); }, onGuestStart: function (d) { play(d.lv, 'guest', d.init); } });
