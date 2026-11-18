@@ -120,6 +120,14 @@
         c.font = 'bold 12px sans-serif'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.7)'; c.lineWidth = 3; c.textAlign = 'center'; if (nb) { c.strokeText('x' + nb, x + TS - 12, y + 14); c.fillText('x' + nb, x + TS - 12, y + 14); }
         break;
       }
+      case 'pantry': {
+        counterBase(c, x, y, '#d7b98a');
+        c.fillStyle = '#7a5a3a'; rr(c, x + 6, y + 6, TS - 12, TS - 12, 8); c.fill(); c.strokeStyle = '#4a3420'; c.lineWidth = 3; c.stroke();
+        c.fillStyle = 'rgba(255,255,255,.18)'; c.fillRect(x + 9, y + TS / 2 - 1, TS - 18, 3);
+        emoji(c, '🗄️', cx, cy - 4, 28);
+        c.font = 'bold 9px sans-serif'; c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText('Despensa', cx, y + TS - 6);
+        break;
+      }
       case 'pc': {
         counterBase(c, x, y, '#90a4ae');
         c.fillStyle = '#263238'; rr(c, x + 9, y + 8, TS - 18, TS - 26, 4); c.fill();
@@ -324,13 +332,35 @@
       const tg = CC.Engine.target(p);
       if (tg) { c.strokeStyle = p.color; c.lineWidth = 3.5; c.globalAlpha = 0.9; rr(c, tg.x * TS + 2, tg.y * TS + 2, TS - 4, TS - 4, 8); c.stroke(); c.globalAlpha = 1; }
     });
+    // pragas
+    (G.bugs || []).forEach(function (b) {
+      const K = CC.BUGS && CC.BUGS[b.k]; if (!K) return;
+      const x = b.x * TS, y = b.y * TS, wob = Math.sin(time * 14 + b.id) * 2;
+      c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(x, y + 8, 7, 3, 0, 0, 7); c.fill();
+      c.save(); c.translate(x, y - (K.fly ? 6 + Math.sin(time * 9 + b.id) * 3 : 0) + wob * 0.3); c.rotate((b.a || 0) + Math.PI / 2 + Math.sin(time * 12 + b.id) * 0.25);
+      emoji(c, K.e, 0, 0, K.fly ? 20 : 22); c.restore();
+    });
     // jogadores (ordenados por y)
     G.players.slice().sort(function (a, b) { return a.y - b.y; }).forEach(function (p) { drawChef(c, p, time); });
+    // chefs: raquete mata-moscas
+    G.players.forEach(function (p) { if (p.swing > 0) { c.save(); c.translate(p.x * TS + p.dx * 26, p.y * TS + p.dy * 26 - 8); c.rotate(p.swing * 18 * (p.dx || 1) + p.dy * 1.2); emoji(c, '🏸', 0, 0, 30); c.restore(); c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 3; c.beginPath(); c.arc(p.x * TS, p.y * TS, TS * 0.9, Math.atan2(p.dy, p.dx) - 0.8, Math.atan2(p.dy, p.dx) + 0.8); c.stroke(); } });
     // fumaça
     G.parts.forEach(function (q) { c.fillStyle = q.c + Math.max(0, q.t * 0.35) + ')'; c.beginPath(); c.arc(q.x * TS, q.y * TS, q.r * TS * (1.6 - q.t * 0.5), 0, 7); c.fill(); });
     // textos flutuantes
     c.textAlign = 'center'; c.textBaseline = 'middle';
     G.floats.forEach(function (f) { c.globalAlpha = Math.min(1, f.t); c.font = 'bold 20px sans-serif'; c.strokeStyle = 'rgba(0,0,0,.75)'; c.lineWidth = 4; c.strokeText(f.txt, f.x * TS, f.y * TS); c.fillStyle = f.col; c.fillText(f.txt, f.x * TS, f.y * TS); c.globalAlpha = 1; });
+    // rush: borda vermelha pulsando
+    if (G.rush > 0) { c.strokeStyle = 'rgba(255,60,40,' + (0.45 + 0.3 * Math.sin(time * 8)) + ')'; c.lineWidth = 10; c.strokeRect(5, 5, W - 10, H - 10); }
+    // apagão
+    if (G.dark > 0) {
+      if (!R._dk || R._dk.width !== W || R._dk.height !== H) { R._dk = document.createElement('canvas'); R._dk.width = W; R._dk.height = H; }
+      const d = R._dk.getContext('2d'); d.globalCompositeOperation = 'source-over'; d.clearRect(0, 0, W, H);
+      d.fillStyle = 'rgba(2,3,10,' + Math.min(0.94, G.dark * 1.2) + ')'; d.fillRect(0, 0, W, H);
+      d.globalCompositeOperation = 'destination-out';
+      G.players.forEach(function (p) { const g = d.createRadialGradient(p.x * TS, p.y * TS, 12, p.x * TS, p.y * TS, TS * 3.3); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = g; d.beginPath(); d.arc(p.x * TS, p.y * TS, TS * 3.3, 0, 7); d.fill(); });
+      for (let yy = 0; yy < G.H; yy++) for (let xx = 0; xx < G.W; xx++) { const t = G.grid[yy][xx]; if (t && t.k === 'app' && t.st === 'cook') { const g = d.createRadialGradient((xx + .5) * TS, (yy + .5) * TS, 4, (xx + .5) * TS, (yy + .5) * TS, TS * 1.4); g.addColorStop(0, 'rgba(0,0,0,.8)'); g.addColorStop(1, 'rgba(0,0,0,0)'); d.fillStyle = g; d.beginPath(); d.arc((xx + .5) * TS, (yy + .5) * TS, TS * 1.4, 0, 7); d.fill(); } }
+      c.drawImage(R._dk, 0, 0);
+    }
     // contagem inicial
     if (G.countdown > 0) {
       c.fillStyle = 'rgba(0,0,0,.45)'; c.fillRect(0, 0, W, H);

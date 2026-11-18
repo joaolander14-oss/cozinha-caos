@@ -67,6 +67,12 @@
       case 'buy': tone(523, 0.08, 'triangle', 0.06); tone(784, 0.1, 'triangle', 0.06, 0, 0.08); tone(1047, 0.22, 'triangle', 0.06, 0, 0.16); break;
       case 'nobuy': tone(180, 0.18, 'square', 0.05); break;
       case 'click': tone(700, 0.04, 'square', 0.03); break;
+      case 'swat': noise('bandpass', 1500, 1, 0.09, 0.06, 500); break;
+      case 'squish': noise('lowpass', 900, 1.5, 0.12, 0.08, 200); tone(180, 0.1, 'sine', 0.05, 70); break;
+      case 'bite': noise('bandpass', 2500, 4, 0.06, 0.05); tone(300, 0.05, 'square', 0.02); break;
+      case 'bug': tone(900, 0.05, 'square', 0.025, 500); tone(700, 0.05, 'square', 0.025, 400, 0.08); break;
+      case 'zap': noise('highpass', 5000, 1, 0.2, 0.07); tone(1800, 0.15, 'sawtooth', 0.04, 300); break;
+      case 'spray': noise('highpass', 4000, 1, 0.8, 0.07); break;
       // preparo
       case 'knife': noise('bandpass', 2600, 3, 0.05, 0.07); tone(1800, 0.03, 'square', 0.02); break;
       case 'scrape': noise('bandpass', 4200, 2, 0.14, 0.05, 2600); break;
@@ -130,6 +136,11 @@
         if (v > 0.06) a[1](v);
       }
     }
+    // pragas correndo
+    (G.bugs || []).forEach(function (b) {
+      b._s = (b._s || Math.random() * 0.3) - dt;
+      if (b._s <= 0) { b._s = 0.14 + Math.random() * 0.14; const v = vol(b.x, b.y, ls); if (v > 0.15) noise('highpass', 5500, 1, 0.025, 0.03 * v + 0.01); }
+    });
     // ações dos chefs (cortar, ralar, lavar…)
     G.players.forEach(function (p) {
       if (!p.chopping) { p._asnd = 0; return; }

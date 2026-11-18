@@ -21,6 +21,18 @@
     boxes: { n: 'Caminhão maior', e: '📦', d: '+1 caixa por pedido de estoque (máx. 6)', cost: [110, 200] },
     plates: { n: 'Mais pratos', e: '🥣', d: '+2 pratos limpos no balcão (até 3 vezes)', cost: [60, 90, 120] }
   };
+  Object.assign(CC.SHOP, {
+    swatter: { n: 'Mata-moscas elétrico', e: '🪰', d: 'Alcance da raquete contra pragas +40% por nível', cost: [80, 150, 260] },
+    zapper: { n: 'Lâmpada mata-insetos', e: '💡', d: 'Elimina pragas sozinha (1 por nível a cada 5s)', cost: [150, 260, 420] },
+    screens: { n: 'Telas nas janelas', e: '🪟', d: 'Pragas aparecem 35% mais devagar por nível', cost: [120, 220, 350] },
+    spray: { n: 'Inseticida', e: '🧴', d: 'Elimina todas as pragas e afasta novas por 45s (compre quando precisar)', cost: [90], repeat: true },
+    fridge: { n: 'Geladeira grande', e: '❄️', d: 'Cada ingrediente guarda +10 unidades (base 20)', cost: [100, 180, 300] },
+    tips: { n: 'Caixa registradora', e: '🧾', d: 'Gorjetas +25% por nível', cost: [140, 250, 400] },
+    dashcd: { n: 'Botas turbo', e: '⚡', d: 'O dash recarrega 20% mais rápido por nível', cost: [90, 160, 260] },
+    clock: { n: 'Relógio extra', e: '⏱️', d: '+15s no relógio (ou +1 vida nos modos com vidas). Compre quando precisar', cost: [130], repeat: true },
+    generator: { n: 'Gerador de emergência', e: '🔋', d: 'A cozinha não fica às escuras em apagões', cost: [200] }
+  });
+  function cfg(k, d) { return (G && G.cfg && G.cfg[k] != null) ? G.cfg[k] : d; }
   function up(k) { return (G && G.up && G.up[k]) || 0; }
 
   /* ---------- multiconjuntos ---------- */
@@ -65,9 +77,9 @@
       if (a.prog >= a.rec.t) { a.st = 'done'; a.out = a.rec.out; a.items = []; a.burn = 0; sfx('done'); toast(ITEMS[a.out].n + ' pronto!', 'ok'); }
     } else if (a.st === 'done') {
       a.burn += dt;
-      const BA = 14 + 5 * up('timer');
-      if (a.burn > BA - 6 && !a.warned) { a.warned = true; sfx('warn'); }
-      if (a.burn >= BA) { a.out = 'queimado'; a.st = 'burnt'; a.warned = false; if (G) G.burnt++; sfx('burn'); toast('Queimou! Jogue no lixo', 'bad'); }
+      const BA = (14 + 5 * up('timer')) * cfg('burn', 1);
+      if (BA > 0 && a.burn > BA - 6 && !a.warned) { a.warned = true; sfx('warn'); }
+      if (BA > 0 && a.burn >= BA) { a.out = 'queimado'; a.st = 'burnt'; a.warned = false; if (G) G.burnt++; sfx('burn'); toast('Queimou! Jogue no lixo', 'bad'); }
     }
   }
 
@@ -94,6 +106,8 @@
     const rel = {};
     G.menu.forEach(function (d) { d.parts.forEach(function walk(id) { if (rel[id]) return; rel[id] = 1; (CC.PROD[id] || []).forEach(function (r) { r.in.forEach(walk); }); }); });
     G.recs = RECIPES.filter(function (r) { return rel[r.out]; });
+    G.cfg = lv.cfg || {}; G.bugs = []; G.bugT = 4; G.bugId = 1; G.immune = 0; G.rush = 0; G.dark = 0; G.killed = 0; G.zapT = 5;
+    G.evT = { rush: 40 + Math.random() * 40, dark: 55 + Math.random() * 50 };
     G.up = {}; Object.keys(CC.SHOP).forEach(function (k) { G.up[k] = 0; });
     G.stockOn = !!lv.stock; G.shopOn = lv.shop !== false; G.cash = lv.cash != null ? lv.cash : (lv.stock ? 300 : 0); G.trucks = []; G.nwin = lv.windows || 1;
     G.stock = {}; G.stockIds = [];
@@ -132,23 +146,28 @@
       W: G.W, H: G.H, grid: grid, ev: ev,
       score: G.score, left: G.left, time: G.time, combo: G.combo, delivered: G.delivered, failed: G.failed, over: G.over, countdown: G.countdown, lives: G.lives, tips: G.tips, bestCombo: G.bestCombo,
       cash: G.cash, stock: G.stock, up: G.up, stockOn: G.stockOn, shopOn: G.shopOn, nwin: G.nwin, trucks: G.trucks.map(function (t) { return { t: t.t, n: t.boxes.length }; }),
+      rush: G.rush, dark: G.dark, killed: G.killed, bugs: G.bugs.map(function (b) { return { id: b.id, k: b.k, x: b.x, y: b.y, a: b.a }; }), cfgBugs: cfg('bugs', 0),
       result: G.result || null,
       orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, seas: o.seas, t: o.t, tmax: o.tmax, vip: o.vip, win: o.win }; }),
-      players: G.players.map(function (p) { return { x: p.x, y: p.y, dx: p.dx, dy: p.dy, hold: p.hold, tray: p.tray, actKind: p.actKind, chopping: p.chopping, dash: p.dash, walk: p.walk, msg: p.msg, msgT: p.msgT, color: p.color, hat: p.hat, name: p.name, dcd: p.dcd }; })
+      players: G.players.map(function (p) { return { x: p.x, y: p.y, dx: p.dx, dy: p.dy, hold: p.hold, tray: p.tray, actKind: p.actKind, swing: p.swing || 0, chopping: p.chopping, dash: p.dash, walk: p.walk, msg: p.msg, msgT: p.msgT, color: p.color, hat: p.hat, name: p.name, dcd: p.dcd }; })
     };
   };
   E.applyState = function (s, first) {
     G.W = s.W; G.H = s.H; G.grid = s.grid;
     G.score = s.score; G.left = s.left; G.time = s.time; G.combo = s.combo; G.delivered = s.delivered; G.failed = s.failed; G.over = s.over; G.countdown = s.countdown; G.lives = s.lives; G.tips = s.tips; G.bestCombo = s.bestCombo;
     if (s.result) G.result = s.result;
-    G.cash = s.cash; G.stock = s.stock; G.up = s.up; G.stockOn = s.stockOn; G.shopOn = s.shopOn; G.nwin = s.nwin; G.trucks = s.trucks;
+    G.cash = s.cash; G.stock = s.stock; G.up = s.up; G.stockOn = s.stockOn; G.shopOn = s.shopOn; G.nwin = s.nwin; G.trucks = s.trucks; G.rush = s.rush; G.dark = s.dark; G.killed = s.killed; G.cfgBugs = s.cfgBugs;
+    (function () {
+      const old = {}; (G.bugs || []).forEach(function (b) { old[b.id] = b; });
+      G.bugs = (s.bugs || []).map(function (q) { const b = old[q.id] || { id: q.id, k: q.k, x: q.x, y: q.y }; b.k = q.k; b.tx = q.x; b.ty = q.y; b.a = q.a; return b; });
+    })();
     if (!G.stockIds) { G.stockIds = []; s.grid.forEach(function (row) { row.forEach(function (t) { if (t && t.k === 'crate' && !CC.SEAS[t.id] && G.stockIds.indexOf(t.id) < 0) G.stockIds.push(t.id); }); }); }
     G.orders = s.orders.map(function (o) { return { id: o.id, dish: DISHES[o.dish], seas: o.seas, t: o.t, tmax: o.tmax, vip: o.vip, win: o.win }; });
     s.players.forEach(function (q, i) {
       let p = G.players[i];
       if (!p) { p = G.players[i] = Object.assign({ id: i, mx: 0, my: 0, act: false, remote: false, tx: q.x, ty: q.y }, q); }
       const mine = i === G.myIdx;
-      ['dx', 'dy', 'hold', 'tray', 'actKind', 'chopping', 'dash', 'walk', 'msg', 'msgT', 'color', 'hat', 'name', 'dcd'].forEach(function (k) { if (!(mine && (k === 'dx' || k === 'dy' || k === 'dash' || k === 'walk' || k === 'dcd'))) p[k] = q[k]; });
+      ['dx', 'dy', 'hold', 'tray', 'actKind', 'swing', 'chopping', 'dash', 'walk', 'msg', 'msgT', 'color', 'hat', 'name', 'dcd'].forEach(function (k) { if (!(mine && (k === 'dx' || k === 'dy' || k === 'dash' || k === 'walk' || k === 'dcd'))) p[k] = q[k]; });
       p.tx = q.x; p.ty = q.y;
       if (first || Math.hypot(p.x - q.x, p.y - q.y) > 1.6) { p.x = q.x; p.y = q.y; }
     });
@@ -163,6 +182,7 @@
         const ex = p.tx - p.x, ey = p.ty - p.y; p.x += ex * Math.min(1, dt * 6); p.y += ey * Math.min(1, dt * 6);
       } else if (p.tx != null) { p.x += (p.tx - p.x) * Math.min(1, dt * 14); p.y += (p.ty - p.y) * Math.min(1, dt * 14); }
     });
+    (G.bugs || []).forEach(function (b) { if (b.tx != null) { b.x += (b.tx - b.x) * Math.min(1, dt * 10); b.y += (b.ty - b.y) * Math.min(1, dt * 10); } });
     G.floats.forEach(function (f) { f.t -= dt; f.y -= dt * 0.6; }); G.floats = G.floats.filter(function (f) { return f.t > 0; });
     G.toasts.forEach(function (t) { t.t -= dt; }); G.toasts = G.toasts.filter(function (t) { return t.t > 0; });
     for (let y = 0; y < G.H; y++) for (let x = 0; x < G.W; x++) { const t = G.grid[y][x]; if (t) { t.x = x; t.y = y; } }
@@ -177,6 +197,7 @@
     return {
       score: G.score, left: G.left, time: G.time, combo: G.combo, delivered: G.delivered, failed: G.failed, over: G.over, countdown: G.countdown, lives: G.lives, endless: !!G.lv.endless,
       cash: G.cash, stock: G.stock, up: G.up, stockOn: G.stockOn, shopOn: G.shopOn, nwin: G.nwin, stockIds: G.stockIds, trucks: G.trucks ? G.trucks.map(function (t) { return { t: t.t, n: t.boxes.length }; }) : [],
+      rush: G.rush, dark: G.dark, killed: G.killed, bugsN: G.bugs ? G.bugs.length : 0, cfgBugs: G.client ? G.cfgBugs : cfg('bugs', 0), lvives: G.lives,
       orders: G.orders.map(function (o) { return { id: o.id, dish: o.dish.id, t: o.t, tmax: o.tmax, seas: o.seas, vip: o.vip, win: o.win }; }),
       toasts: G.toasts.slice(-3).map(function (t) { return { id: t.id, txt: t.txt, kind: t.kind }; }),
       result: G.result || null
@@ -197,13 +218,13 @@
     if (lv.seasP > 0 && d.seas.length && Math.random() < lv.seasP) seas.push(d.seas[Math.floor(Math.random() * d.seas.length)]);
     const players = G.players.length;
     const tmax = Math.round(d.time * lv.pat * (1 + 0.12 * up('patience')) * (players === 1 ? 1.15 : 1) * (lv.endless ? Math.max(0.55, 1 - G.time / 900) : 1));
-    const vip = !lv.practice && Math.random() < 0.08;
+    const vip = !lv.practice && Math.random() < cfg('vip', 0.08);
     G.orders.push({ id: G.oid++, dish: d, seas: seas, t: tmax, tmax: tmax, vip: vip, win: G.nwin > 1 ? Math.floor(Math.random() * G.nwin) : 0 });
     sfx('order');
   }
   function nextInterval() {
     const lv = G.lv, f = (G.players.length === 1 ? 1.25 : G.players.length >= 3 ? 0.8 : 1) * (lv.endless ? Math.max(0.4, 1 - G.time / 700) : 1);
-    return (lv.int[0] + Math.random() * (lv.int[1] - lv.int[0])) * f;
+    return (lv.int[0] + Math.random() * (lv.int[1] - lv.int[0])) * f * (G.rush > 0 ? 0.5 : 1);
   }
   function winName(i) { const n = G.lv.winNames; return (n && n[i]) || ('Janela ' + String.fromCharCode(65 + i)); }
   CC.winName = function (lv, i) { return (lv.winNames && lv.winNames[i]) || ('Janela ' + String.fromCharCode(65 + i)); };
@@ -217,10 +238,10 @@
     if (!best) { const o = match[0]; say(p, 'É da ' + winName(o.win) + '!'); sfx('wrong'); toast('Esse pedido é da ' + winName(o.win), 'bad'); return false; }
     const frac = best.t / best.tmax;
     const base = Math.round((best.dish.price + (best.seas.length ? 5 : 0)) * (1 + 0.08 * up('price')));
-    const tip = Math.round(base * 0.5 * frac);
+    const tip = cfg('tips', true) === false ? 0 : Math.round(base * 0.5 * frac * (1 + 0.25 * up('tips')));
     G.combo++; G.bestCombo = Math.max(G.bestCombo, G.combo); G.dishCount[best.dish.id] = (G.dishCount[best.dish.id] || 0) + 1;
     const cb = Math.min(G.combo - 1, 6) * 3;
-    const pts = (base + tip + cb) * (best.vip ? 2 : 1);
+    const pts = Math.round((base + tip + cb) * (best.vip ? 2 : 1) * (G.rush > 0 ? 1.5 : 1));
     G.score += pts; G.cash += pts; G.tips += tip; G.delivered++;
     G.orders.splice(G.orders.indexOf(best), 1);
     float(tile.x + 0.5, tile.y + 0.2, '+' + pts + (G.combo > 1 ? ' x' + G.combo : ''), '#ffd84a');
@@ -274,7 +295,12 @@
       case 'crate': {
         const season = isSeason(t.id), need = G.stockOn && !season;
         if (h && h.box) {
-          if (h.box === t.id) { G.stock[t.id] = (G.stock[t.id] || 0) + h.n; float(t.x + 0.5, t.y, '+' + h.n + ' ' + ITEMS[t.id].e, '#8fe3a1'); p.hold = null; sfx('box'); }
+          if (h.box === t.id) {
+            const capS = 20 + 10 * up('fridge'), cur = G.stock[t.id] || 0, add = Math.min(h.n, capS - cur);
+            if (add <= 0) { say(p, 'Geladeira cheia (' + capS + ')'); sfx('wrong'); return; }
+            G.stock[t.id] = cur + add; h.n -= add; float(t.x + 0.5, t.y, '+' + add + ' ' + ITEMS[t.id].e, '#8fe3a1'); sfx('box');
+            if (h.n <= 0) p.hold = null; else say(p, 'Sobraram ' + h.n + ' na caixa');
+          }
           else say(p, 'Caixa de ' + ITEMS[h.box].n);
           return;
         }
@@ -322,6 +348,10 @@
         return;
       case 'pc':
         sfx('click'); if (E.onPc) E.onPc(p.id);
+        return;
+      case 'pantry':
+        if (!h) { sfx('click'); if (E.onPantry) E.onPantry(p.id); }
+        else if (typeof h === 'string') { p.hold = null; sfx('put'); }
         return;
     }
   }
@@ -394,7 +424,7 @@
     let mx = p.mx, my = p.my;
     const mag = Math.hypot(mx, my);
     if (mag > 0) { mx /= mag; my /= mag; if (Math.abs(mx) > Math.abs(my) + 0.01) { p.dx = Math.sign(mx); p.dy = 0; } else if (Math.abs(my) > Math.abs(mx) + 0.01) { p.dx = 0; p.dy = Math.sign(my); } else { p.dx = Math.sign(mx); p.dy = 0; } }
-    let sp = 4.4 * (1 + 0.08 * up('shoes')) * (up('cart') ? 0.85 : p.tray && p.tray.length >= 2 ? 0.94 : 1);
+    let sp = 4.4 * cfg('chef', 1) * (1 + 0.08 * up('shoes')) * (up('cart') ? 0.85 : p.tray && p.tray.length >= 2 ? 0.94 : 1);
     if (p.dash > 0) { p.dash -= dt; sp = 10.5; if (!mag) { mx = p.dx; my = p.dy; } }
     if (p.act && p.chopping) { mx = 0; my = 0; }
     const nx = p.x + mx * sp * dt, ny = p.y + my * sp * dt;
@@ -405,7 +435,7 @@
   function hit(x, y, self) {
     const x0 = Math.floor(x - R), x1 = Math.floor(x + R), y0 = Math.floor(y - R), y1 = Math.floor(y + R);
     for (let cy = y0; cy <= y1; cy++) for (let cx = x0; cx <= x1; cx++) if (solid(cx, cy)) return true;
-    for (let i = 0; i < G.players.length; i++) { const o = G.players[i]; if (o !== self && Math.hypot(o.x - x, o.y - y) < R * 1.9) return true; }
+    if (!cfg('noCollide', false)) for (let i = 0; i < G.players.length; i++) { const o = G.players[i]; if (o !== self && Math.hypot(o.x - x, o.y - y) < R * 1.9) return true; }
     return false;
   }
 
@@ -413,8 +443,11 @@
   E.step = function (dt) {
     if (!G || G.over || G.paused) return;
     if (G.countdown > 0) { G.countdown -= dt; if (G.countdown < 0) G.countdown = 0; return; }
+    dt *= cfg('speed', 1);
     const lv = G.lv;
     G.time += dt;
+    updateEvents(dt);
+    updateBugs(dt);
     if (!lv.practice && !lv.endless) { G.left -= dt; if (G.left <= 0) { G.left = 0; return finish(); } }
     // pedidos
     G.nextIn -= dt;
@@ -429,7 +462,7 @@
         G.orders.splice(i, 1); G.failed++; G.combo = 0;
         const pen = Math.round(o.dish.price * 0.4); G.score = Math.max(0, G.score - pen); G.cash = Math.max(0, G.cash - pen);
         toast('Pedido perdido: ' + o.dish.n + ' (-' + pen + ')', 'bad'); sfx('fail'); G.shake = 0.3;
-        if (lv.endless) { G.lives--; if (G.lives <= 0) return finish(); }
+        if (lv.lives) { G.lives--; if (G.lives <= 0) return finish(); }
       }
     }
     // jogadores
@@ -437,6 +470,8 @@
       move(p, dt);
       if (p.act) holdAction(p, dt); else p.chopping = false;
       if (p.msgT > 0) p.msgT -= dt;
+      if (p.scd > 0) p.scd -= dt;
+      if (p.swing > 0) p.swing -= dt;
     });
     // tiles
     for (let y = 0; y < G.H; y++) for (let x = 0; x < G.W; x++) {
@@ -470,6 +505,116 @@
     if (G.shake > 0) G.shake -= dt;
     emitParticles(dt);
   };
+  /* ---------- eventos (rush, apagão) ---------- */
+  function updateEvents(dt) {
+    if (G.rush > 0) { G.rush -= dt; if (G.rush <= 0) toast('O rush acabou', 'ok'); }
+    if (G.dark > 0) { G.dark -= dt; if (G.dark <= 0) toast('A luz voltou!', 'ok'); }
+    if (cfg('rush', false)) { G.evT.rush -= dt; if (G.evT.rush <= 0) { G.evT.rush = 70 + Math.random() * 50; G.rush = 20; toast('🔥 HORA DO RUSH! Pedidos 2× mais rápidos e +50% de pontos', 'bad'); sfx('order'); } }
+    if (cfg('dark', false)) { G.evT.dark -= dt; if (G.evT.dark <= 0) { G.evT.dark = 60 + Math.random() * 60; if (up('generator')) toast('🔋 O gerador segurou o apagão', 'ok'); else { G.dark = 7; toast('💡 APAGÃO! Fique perto das luzes dos chefs', 'bad'); sfx('fail'); } } }
+  }
+  /* ---------- pragas ---------- */
+  const BUGS = {
+    roach: { e: '🪳', sp: 1.7, hp: 1, bite: 9, w: 3 }, fly: { e: '🪰', sp: 3.2, hp: 1, bite: 12, w: 3, fly: 1 }, ant: { e: '🐜', sp: 1.3, hp: 1, bite: 8, w: 2, group: 3 },
+    beetle: { e: '🪲', sp: 1.2, hp: 2, bite: 10, w: 1 }, wasp: { e: '🐝', sp: 3.6, hp: 1, bite: 14, w: 1, fly: 1 }, worm: { e: '🐛', sp: 0.9, hp: 2, bite: 8, w: 1 }
+  };
+  CC.BUGS = BUGS;
+  const BCAP = [0, 4, 8, 14], BINT = [99, 16, 10, 6];
+  function floorEdge() {
+    for (let k = 0; k < 40; k++) {
+      const x = 1 + Math.floor(Math.random() * (G.W - 2)), y = 1 + Math.floor(Math.random() * (G.H - 2));
+      if (!G.grid[y][x] && (x === 1 || y === 1 || x === G.W - 2 || y === G.H - 2)) return [x + 0.5, y + 0.5];
+    }
+    return [1.5, 1.5];
+  }
+  function spawnBugs() {
+    const lvl = cfg('bugs', 0) | 0;
+    if (G.bugs.length >= BCAP[lvl]) return;
+    const keys = Object.keys(BUGS), tot = keys.reduce(function (s, k) { return s + BUGS[k].w; }, 0);
+    let r = Math.random() * tot, kind = keys[0];
+    for (let i = 0; i < keys.length; i++) { r -= BUGS[keys[i]].w; if (r <= 0) { kind = keys[i]; break; } }
+    const K = BUGS[kind], n = K.group || 1, pt = floorEdge();
+    for (let i = 0; i < n && G.bugs.length < BCAP[lvl] + 3; i++) G.bugs.push({ id: G.bugId++, k: kind, x: pt[0] + Math.random() * 0.6, y: pt[1] + Math.random() * 0.6, hp: K.hp, tx: 0, ty: 0, rt: 0, bt: 1 + Math.random() * 2, ph: Math.random() * 6, a: 0 });
+    if (G.bugs.length === n) { toast('🪳 Pragas na cozinha! Use R (ou clique) para matar', 'bad'); }
+    sfx('bug');
+  }
+  function bugTargets() {
+    const out = [];
+    for (let y = 0; y < G.H; y++) for (let x = 0; x < G.W; x++) {
+      const t = G.grid[y][x]; if (!t) continue;
+      let ok = false;
+      if (SLOTS[t.k]) { const s = t.thing; ok = (typeof s === 'string' && s !== 'infestado') || (s && s.plate && s.items.length && s.items.indexOf('infestado') < 0); }
+      else if (t.k === 'app') ok = !!t.out && t.out !== 'queimado' && t.out !== 'infestado';
+      else if (t.k === 'crate') ok = G.stockOn && !CC.SEAS[t.id] && G.stock[t.id] > 0;
+      else if (t.k === 'dock') ok = t.boxes.length > 0;
+      if (ok) out.push([x + 0.5, y + 0.5]);
+    }
+    return out;
+  }
+  function updateBugs(dt) {
+    const lvl = cfg('bugs', 0) | 0;
+    if (G.immune > 0) G.immune -= dt;
+    if (lvl > 0 && G.immune <= 0) { G.bugT -= dt; if (G.bugT <= 0) { G.bugT = BINT[lvl] * (1 + 0.35 * up('screens')) * (0.7 + Math.random() * 0.6); spawnBugs(); } }
+    if (up('zapper') && G.bugs.length) { G.zapT -= dt; if (G.zapT <= 0) { G.zapT = 5; for (let i = 0; i < up('zapper') && G.bugs.length; i++) { const b = G.bugs[Math.floor(Math.random() * G.bugs.length)]; kill(b, '⚡'); } sfx('zap'); } }
+    if (!G.bugs.length) return;
+    const targets = bugTargets();
+    G.bugs.forEach(function (b) {
+      const K = BUGS[b.k];
+      b.rt -= dt;
+      if (b.rt <= 0 || !b.tx) {
+        b.rt = 2 + Math.random() * 2;
+        let best = null, bd = 1e9;
+        targets.forEach(function (t) { const d = Math.hypot(t[0] - b.x, t[1] - b.y) + Math.random() * 4; if (d < bd) { bd = d; best = t; } });
+        if (best) { b.tx = best[0]; b.ty = best[1]; b.goal = true; } else { b.tx = 1.5 + Math.random() * (G.W - 3); b.ty = 1.5 + Math.random() * (G.H - 3); b.goal = false; }
+      }
+      const dx = b.tx - b.x, dy = b.ty - b.y, d = Math.hypot(dx, dy) || 1;
+      if (d > 0.45) {
+        b.ph += dt * 9;
+        const sp = K.sp * (G.immune > 0 ? 0.5 : 1);
+        b.x += (dx / d * sp + (-dy / d) * Math.sin(b.ph) * 0.8) * dt; b.y += (dy / d * sp + (dx / d) * Math.sin(b.ph) * 0.8) * dt; b.a = Math.atan2(dy, dx);
+      } else if (b.goal) {
+        b.bt -= dt;
+        if (b.bt <= 0) { b.bt = K.bite; infest(b); if (Math.random() < 0.6) b.rt = 0; }
+      } else b.rt = 0;
+    });
+  }
+  function infest(b) {
+    const cx = Math.floor(b.tx), cy = Math.floor(b.ty), t = tileAt(cx, cy);
+    if (!t) return;
+    let hit = false;
+    if (SLOTS[t.k]) {
+      if (typeof t.thing === 'string' && t.thing !== 'infestado') { t.thing = 'infestado'; hit = true; }
+      else if (t.thing && t.thing.plate && t.thing.items.length) { t.thing.items = ['infestado']; hit = true; }
+    } else if (t.k === 'app' && t.out && t.out !== 'queimado' && t.out !== 'infestado') { t.out = 'infestado'; hit = true; }
+    else if (t.k === 'crate' && G.stockOn && G.stock[t.id] > 0) { G.stock[t.id]--; float(cx + 0.5, cy, '-1 ' + ITEMS[t.id].e, '#ff8a80'); hit = true; }
+    else if (t.k === 'dock' && t.boxes.length) { t.boxes[0].n--; if (t.boxes[0].n <= 0) t.boxes.shift(); hit = true; }
+    if (hit) { sfx('bite'); if (!G.lastBugToast || G.time - G.lastBugToast > 6) { G.lastBugToast = G.time; toast('🪳 Uma praga estragou comida!', 'bad'); } }
+  }
+  function splat(b) { for (let i = 0; i < 5; i++) G.parts.push({ x: b.x + (Math.random() - 0.5) * 0.3, y: b.y + (Math.random() - 0.5) * 0.3, vy: -0.2, t: 0.6, c: 'rgba(120,170,60,', r: 0.06 + Math.random() * 0.05 }); }
+  function kill(b, mark) {
+    const i = G.bugs.indexOf(b); if (i < 0) return;
+    G.bugs.splice(i, 1); G.killed++; G.cash += 2; splat(b); float(b.x, b.y - 0.2, mark || '+2', '#b8e986'); sfx('squish');
+  }
+  function swat(p, ax, ay) {
+    if (G.over || G.countdown > 0) return;
+    if (p.scd > 0) return; p.scd = 0.28;
+    const R = 1.05 + 0.4 * up('swatter');
+    let n = 0;
+    G.bugs.slice().forEach(function (b) {
+      const dx = b.x - p.x, dy = b.y - p.y, d = Math.hypot(dx, dy);
+      const inFront = dx * p.dx + dy * p.dy > -0.15;
+      let hitIt = false;
+      if (ax != null) hitIt = Math.hypot(b.x - ax, b.y - ay) < 0.75 && d < 4.5; else hitIt = d < R && inFront;
+      if (hitIt) { b.hp--; if (b.hp <= 0) { kill(b); n++; } else { splat(b); sfx('squish'); } }
+    });
+    p.swing = 0.2;
+    if (!n) sfx('swat');
+  }
+  E.clickSwat = function (tx, ty) {
+    if (!G || G.over) return;
+    if (G.client) { const me = G.players[G.myIdx]; if (me) outbox.push('s@' + tx.toFixed(2) + ',' + ty.toFixed(2)); return; }
+    const mine = G.players.find(function (p) { return !p.remote; }) || G.players[0];
+    swat(mine, tx, ty);
+  };
   function listeners() { if (!G) return []; if (G.client) return G.players[G.myIdx] ? [G.players[G.myIdx]] : []; return G.players.filter(function (p) { return !p.remote; }); }
   function findTile(k) { for (let y = 0; y < G.H; y++) for (let x = 0; x < G.W; x++) { const t = G.grid[y][x]; if (t && t.k === k) return t; } return null; }
 
@@ -490,14 +635,14 @@
     G.over = true;
     const lv = G.lv, st = lv.stars || [100, 250, 450];
     const stars = G.score >= st[2] ? 3 : G.score >= st[1] ? 2 : G.score >= st[0] ? 1 : 0;
-    G.result = { score: G.score, stars: stars, delivered: G.delivered, failed: G.failed, tips: G.tips, bestCombo: G.bestCombo, need: st, time: Math.round(G.time), burnt: G.burnt, dishes: G.dishCount, cash: G.cash };
+    G.result = { score: G.score, stars: stars, delivered: G.delivered, failed: G.failed, tips: G.tips, bestCombo: G.bestCombo, need: st, time: Math.round(G.time), burnt: G.burnt, dishes: G.dishCount, cash: G.cash, killed: G.killed };
     sfx(stars ? 'win' : 'lose');
   }
   E.finish = function () { if (G && !G.over) finish(); };
   /* computador: pedir estoque e comprar melhorias (rodam no anfitrião) */
   E.maxBoxes = function () { return Math.min(6, 4 + up('boxes')); };
-  E.boxCost = function (id) { return CC.priceOf(id) * 4; };
-  E.truckDelay = function () { return Math.round(26 * Math.pow(0.88, up('express'))); };
+  E.boxCost = function (id) { return Math.max(1, Math.round(CC.priceOf(id) * 4 * cfg('priceMul', 1))); };
+  E.truckDelay = function () { return Math.max(4, Math.round(26 * cfg('truckMul', 1) * Math.pow(0.88, up('express')))); };
   E.pcOrder = function (idx, ids) {
     if (!G || G.over || !G.stockOn) return false;
     ids = (ids || []).filter(function (id) { return G.stockIds.indexOf(id) >= 0; }).slice(0, E.maxBoxes());
@@ -513,15 +658,27 @@
   E.shopBuy = function (idx, id) {
     const it = CC.SHOP[id];
     if (!G || G.over || !it) return false;
-    const lvl = up(id);
-    if (lvl >= it.cost.length) { toast(it.n + ' já está no máximo', 'bad'); return false; }
-    if (G.cash < it.cost[lvl]) { sfx('nobuy'); toast('Dinheiro insuficiente', 'bad'); return false; }
-    G.cash -= it.cost[lvl]; G.up[id] = lvl + 1;
+    const lvl = up(id), rep = !!it.repeat;
+    if (!rep && lvl >= it.cost.length) { toast(it.n + ' já está no máximo', 'bad'); return false; }
+    const price = rep ? it.cost[0] : it.cost[lvl];
+    if (G.cash < price) { sfx('nobuy'); toast('Dinheiro insuficiente', 'bad'); return false; }
+    if (id === 'clock') {
+      if (G.lv.practice) { toast('Sem efeito no treino', 'bad'); return false; }
+      if (G.lv.lives) G.lives = Math.min(5, G.lives + 1); else if (G.lv.endless) { toast('Sem efeito neste modo', 'bad'); return false; } else G.left += 15;
+    }
+    G.cash -= price; G.up[id] = lvl + 1;
     if (id === 'plates') { const r = findTile('rack'); if (r) r.n += 2; }
-    sfx('buy'); toast(it.e + ' ' + it.n + ' comprado!', 'ok');
+    if (id === 'spray') { G.bugs.forEach(function (b) { splat(b); }); G.killed += G.bugs.length; G.bugs = []; G.immune = 45; sfx('spray'); }
+    else sfx('buy');
+    toast(it.e + ' ' + it.n + ' comprado!', 'ok');
     return true;
   };
-  E.onPc = null;
+  E.onPc = null; E.onPantry = null;
+  E.pantryTake = function (idx, id) {
+    const p = G && G.players[idx];
+    if (!p || p.hold || !ITEMS[id] || !ITEMS[id].raw || CC.SEAS[id]) return false;
+    p.hold = id; sfx('pick'); return true;
+  };
 
   /* ---------- laço ---------- */
   function loop(now) {
@@ -536,10 +693,10 @@
 
   /* ---------- entrada ---------- */
   const MAPS = [
-    { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], act: ['Space'], chop: ['KeyE'], dash: ['KeyQ', 'ShiftLeft'] },
-    { up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], act: ['Enter'], chop: ['ShiftRight', 'Period'], dash: ['Slash', 'Comma'] },
-    { up: ['KeyI'], down: ['KeyK'], left: ['KeyJ'], right: ['KeyL'], act: ['KeyU'], chop: ['KeyO'], dash: ['KeyY'] },
-    { up: ['Numpad8'], down: ['Numpad5'], left: ['Numpad4'], right: ['Numpad6'], act: ['Numpad0'], chop: ['NumpadDecimal'], dash: ['NumpadEnter'] }
+    { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], act: ['Space'], chop: ['KeyE'], dash: ['KeyQ', 'ShiftLeft'], swat: ['KeyR', 'KeyF'] },
+    { up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], act: ['Enter'], chop: ['ShiftRight', 'Period'], dash: ['Slash', 'Comma'], swat: ['Quote', 'Backslash'] },
+    { up: ['KeyI'], down: ['KeyK'], left: ['KeyJ'], right: ['KeyL'], act: ['KeyU'], chop: ['KeyO'], dash: ['KeyY'], swat: ['KeyH'] },
+    { up: ['Numpad8'], down: ['Numpad5'], left: ['Numpad4'], right: ['Numpad6'], act: ['Numpad0'], chop: ['NumpadDecimal'], dash: ['NumpadEnter'], swat: ['NumpadAdd'] }
   ];
   CC.MAPS = MAPS;
   const pressedQ = [], padPrev = {};
@@ -565,7 +722,9 @@
   function press(p, kind) {
     if (G.client) { if (p.id === G.myIdx) outbox.push(kind); return; }
     if (kind === 'i') interact(p);
-    else if (p.dcd <= 0 && !G.paused) { p.dash = 0.16; p.dcd = 1.1; sfx('dash'); }
+    else if (kind === 'd') { if (p.dcd <= 0 && !G.paused) { p.dash = 0.16; p.dcd = 1.1 * (1 - 0.2 * up('dashcd')); sfx('dash'); } }
+    else if (kind === 's') swat(p);
+    else if (kind.charAt(0) === 's' && kind.charAt(1) === '@') { const q = kind.slice(2).split(','); swat(p, +q[0], +q[1]); }
   }
   const outbox = [];
   let sendAcc = 0;
@@ -581,7 +740,7 @@
     if (!G || !G.players[i]) return;
     const p = G.players[i];
     p.mx = Math.max(-1, Math.min(1, +mx || 0)); p.my = Math.max(-1, Math.min(1, +my || 0)); p.act = !!act;
-    (presses || []).forEach(function (k) { if (k === 'i' || k === 'd') press(p, k); });
+    (presses || []).forEach(function (k) { if (typeof k === 'string' && k.length < 20 && (k === 'i' || k === 'd' || k === 's' || k.indexOf('s@') === 0)) press(p, k); });
   };
   function readPads() {
     const out = {};
@@ -617,6 +776,7 @@
         edge('d', b(1) || b(5) || b(6), function () { press(p, 'd'); });
         edge('s', b(9), function () { if (CC.onPauseKey) CC.onPauseKey(); });
         edge('y', b(3), function () { if (CC.onBookKey) CC.onBookKey(); });
+        edge('l', b(4), function () { press(p, 's'); });
       }
       p.mx = Math.max(-1, Math.min(1, mx)); p.my = Math.max(-1, Math.min(1, my)); p.act = act;
     });
@@ -628,6 +788,7 @@
         setsFor(i).forEach(function (m) {
           if (m.act.indexOf(c) >= 0) press(p, 'i');
           if (m.dash.indexOf(c) >= 0) press(p, 'd');
+          if (m.swat.indexOf(c) >= 0) press(p, 's');
         });
       });
     }

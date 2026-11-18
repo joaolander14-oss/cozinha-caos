@@ -83,7 +83,7 @@
     const i = MP.players.findIndex(function (p) { return p.conn === c; });
     if (i < 0) return;
     if (d.t === 'in') CC.Engine.setRemote(i, d.mx, d.my, d.act, d.pr);
-    else if (d.t === 'cmd') { if (d.c === 'order') CC.Engine.pcOrder(i, d.ids); else if (d.c === 'buy') CC.Engine.shopBuy(i, d.id); }
+    else if (d.t === 'cmd') { if (d.c === 'order') CC.Engine.pcOrder(i, d.ids); else if (d.c === 'buy') CC.Engine.shopBuy(i, d.id); else if (d.c === 'take') CC.Engine.pantryTake(i, d.id); }
     else if (d.t === 'chat') broadcast({ t: 'chat', from: MP.players[i].name, txt: String(d.txt || '').slice(0, 80) });
   }
   function hostDrop(c) {
@@ -157,6 +157,7 @@
       CC.Engine.applyState(Object.assign({}, s, { grid: g.grid }));
     } else if (d.t === 'chat') emit('chat', d);
     else if (d.t === 'pc') emit('pc');
+    else if (d.t === 'pantry') emit('pantry');
   }
   MP.chat = function (txt) { if (MP.role === 'guest') sendTo(toHost, { t: 'chat', txt: txt }); else if (MP.role === 'host') { broadcast({ t: 'chat', from: MP.players[0].name, txt: txt }); emit('chat', { from: MP.players[0].name, txt: txt }); } };
   MP.updateProfile = function (name, skin) { if (MP.role === 'host') { MP.players[0].name = name; MP.players[0].skin = skin; lobbyChanged(); } };

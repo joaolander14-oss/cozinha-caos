@@ -143,3 +143,9 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .shopcard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px}.shopcard.maxed{opacity:.6}
 .shophead{display:flex;gap:10px;align-items:center}.pips{color:#4b4036;letter-spacing:3px}.pips .on{color:var(--acc2)}
 label.chk{flex-direction:row!important;align-items:center;gap:8px!important}
+
+.banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-weight:800;font-size:20px;padding:6px 20px;border-radius:14px;pointer-events:none;animation:pulse .6s infinite alternate}
+.banner.rush{background:#c0392bdd;color:#fff}.banner.dark{background:#10163acc;color:#ffd84a}
+.opts2 h4{margin:14px 0 2px;color:var(--acc2);font-size:14px}
+.opts2{max-height:78vh;overflow:auto}
+.banner.dark{top:58px}

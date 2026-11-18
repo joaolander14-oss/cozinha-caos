@@ -30,7 +30,7 @@
       menu: ['xbacon', 'gourmet', 'caesar', 'omelete_c', 'creme_batata', 'peixe_grelhado', 'frango_batata', 'carbonara', 'torta_banana', 'milkshake_morango', 'arroz_frito', 'batata_recheada'], tempo: 240, int: [13, 18], max: 6, pat: 0.9, layout: 'ilha', plates: 6, seasP: 0.4, w: 16, h: 10, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2 } },
     { id: 12, nome: 'Caos Total', e: '🔥', cor: '#6c1d1d', tip: 'Todos os pratos do livro, uma cozinha enorme dividida ao meio. Boa sorte, chef!',
       menu: 'CLASSIC', tempo: 300, int: [11, 16], max: 7, pat: 0.85, layout: 'divisao', plates: 7, seasP: 0.45, w: 22, h: 12, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2 } },
-    { id: 99, nome: 'Treino Livre', e: '🧪', cor: '#34495e', tip: 'Sem relógio e sem penalidades — todos os pratos e equipamentos. Perfeito para aprender receitas.',
+    { id: 99, pantry: true, nome: 'Treino Livre', e: '🧪', cor: '#34495e', tip: 'Sem relógio e sem penalidades — todos os pratos e equipamentos. Perfeito para aprender receitas.',
       menu: 'ALL', tempo: 0, int: [20, 28], max: 4, pat: 1.6, layout: 'ilha', plates: 8, seasP: 0.3, w: 18, h: 11, practice: true, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2, blender: 2, mixer: 2 } }
   ];
   /* fases da expansão: menu sorteado por categorias (semente fixa) */
@@ -50,7 +50,7 @@
     { id: 20, nome: 'Sorveteria Polar', e: '🍦', cor: '#16a085', tip: 'Sorveteira: leite + creme + fruta. Maçarico para brûlée e caramelizar.', menuIds: ['sorvete_creme', 'sorvete_choco', 'sorvete_morango', 'sorvete_manga', 'sorvete_coco', 'raspadinha', 'raspa_limao', 'frozen_iogurte', 'sundae', 'banana_split', 'banana_flamb', 'creme_brulee', 'cafe_gelado', 'milkshake'], tempo: 220, int: [13, 17], max: 6, pat: 0.95, layout: 'ilha', plates: 6, seasP: 0.5, extra: { icecream: 2, torch: 1, blender: 2 } },
     { id: 21, nome: 'Mar Gourmet', e: '🦞', cor: '#1b4f72', tip: 'Lagosta, ostras e polvo: caros, mas demorados. Panela de pressão amolece o polvo.', cats: ['gourmet'], n: 12, tempo: 240, int: [14, 18], max: 6, pat: 0.95, layout: 'divisao', plates: 7, seasP: 0.4, w: 17, h: 10, extra: { steamer: 2, pressure: 2, oven: 2, pot: 2 } },
     { id: 22, nome: 'Menu Degustação', e: '👑', cor: '#7d3c98', tip: 'Todas as cozinhas do mundo num só lugar. Prepare-se.', cats: ['lanche', 'asia', 'japa', 'churras', 'veg', 'cafeteria', 'padaria', 'gourmet', 'ita', 'mex', 'doce', 'bebida', 'pizza', 'sopa'], n: 30, tempo: 280, int: [11, 15], max: 7, pat: 0.9, layout: 'ilha', plates: 8, seasP: 0.45, w: 20, h: 12, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2, blender: 1, mixer: 1, wok: 1, steamer: 1, sushi: 1, coffee: 1, icecream: 1, pressure: 1, smoker: 1, roller: 1, torch: 1, processor: 1, breader: 1, toaster: 1 } },
-    { id: 23, nome: 'Caos Supremo', e: '💥', cor: '#4a0e0e', tip: 'Cardápio enorme, cozinha gigante dividida ao meio. Só para mestres-cuca.', cats: ['lanche', 'asia', 'japa', 'churras', 'veg', 'cafeteria', 'padaria', 'gourmet', 'ita', 'mex', 'doce', 'bebida', 'pizza', 'sopa', 'br', 'mar', 'cafe', 'salada'], n: 34, tempo: 330, int: [9, 14], max: 8, pat: 0.85, layout: 'divisao', plates: 9, seasP: 0.5, w: 26, h: 15, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2, blender: 1, mixer: 1, wok: 1, steamer: 1, sushi: 1, coffee: 1, icecream: 1, pressure: 1, smoker: 1, roller: 1, torch: 1, processor: 1, breader: 1, toaster: 1 } }
+    { id: 23, nome: 'Caos Supremo', e: '💥', cor: '#4a0e0e', tip: 'Cardápio enorme, cozinha gigante dividida ao meio. Só para mestres-cuca.', cats: ['lanche', 'asia', 'japa', 'churras', 'veg', 'cafeteria', 'padaria', 'gourmet', 'ita', 'mex', 'doce', 'bebida', 'pizza', 'sopa', 'br', 'mar', 'cafe', 'salada'], n: 26, tempo: 330, int: [9, 14], max: 8, pat: 0.85, layout: 'divisao', plates: 9, seasP: 0.5, w: 26, h: 15, extra: { pot: 2, pan: 2, grill: 2, oven: 2, fryer: 2, blender: 1, mixer: 1, wok: 1, steamer: 1, sushi: 1, coffee: 1, icecream: 1, pressure: 1, smoker: 1, roller: 1, torch: 1, processor: 1, breader: 1, toaster: 1 } }
   ];
   EXTRA.forEach(function (x) { if (x.cats) x.menu = pickMenu(x.cats, x.n, x.id * 977); else x.menu = x.menuIds; });
   CC.LEVELS.splice(CC.LEVELS.length - 1, 0, ...EXTRA);
@@ -89,7 +89,7 @@
   /* monta a grade de tiles (cresce sozinha se faltar espaço) */
   CC.buildGrid = function (lv) {
     const need = CC.levelNeeds(lv);
-    const crates = Object.keys(need.raw).sort(function (a, b) { return CC.ING[a].n < CC.ING[b].n ? -1 : 1; }).concat(Object.keys(need.seas));
+    const crates = (lv.pantry ? [] : Object.keys(need.raw).sort(function (a, b) { return CC.ING[a].n < CC.ING[b].n ? -1 : 1; })).concat(Object.keys(need.seas));
     const apps = [];
     Object.keys(CC.APPS).forEach(function (a) {
       if (!need.apps[a]) return;
@@ -106,6 +106,7 @@
     const specials = [];
     if (lv.pc !== false && (lv.stock || lv.shop !== false)) specials.push({ sp: 'pc' });
     if (lv.stock) specials.push({ sp: 'dock' });
+    if (lv.pantry) { specials.push({ sp: 'pantry' }); specials.push({ sp: 'pantry' }); }
     for (let w = 1; w < (lv.windows || 1); w++) specials.push({ sp: 'win', win: w });
     const items = crates.map(function (id) { return { id: id }; });
     specials.forEach(function (s, k) { items.splice(Math.min(items.length, Math.floor((k + 1) * items.length / (specials.length + 1))), 0, s); });
@@ -133,6 +134,7 @@
     const mkItem = function (o) {
       if (o.id) return { k: 'crate', id: o.id };
       if (o.sp === 'pc') return { k: 'pc' };
+      if (o.sp === 'pantry') return { k: 'pantry' };
       if (o.sp === 'dock') return { k: 'dock', boxes: [], flash: 0 };
       return { k: 'serve', flash: 0, win: o.win };
     };
@@ -263,13 +265,30 @@
     const menu = pick(CLASSIC.concat(['sand', 'deli', 'cafeteria', 'padaria']), 26, 4242);
     return prep({ id: 'salon', nome: 'Salão de Restaurante', e: '🪟', cor: '#2c7a7b', tip: 'Cada mesa é uma janela: o prato precisa ir para a janela da mesa que pediu. Estoque e loja ativos.', menu: menu, tempo: 300, int: [12, 17], max: 6, pat: 1, layout: 'ilha', plates: 8, seasP: 0.4, windows: 3, winNames: CC.WIN_SALON, stock: { initial: 8 }, cash: 400, extra: autoExtra(menu), w: 19, h: 11 });
   };
+  CC.makePests = function () {
+    const menu = pick(CLASSIC, 18, 31337);
+    return prep({ id: 'pests', nome: 'Infestação!', e: '🪳', cor: '#5d4037', tip: 'Baratas, moscas e formigas invadem a cozinha e estragam comida! Mate com R (ou clique no inseto). A loja tem mata-moscas, lâmpada, telas e inseticida.', menu: menu, tempo: 300, int: [13, 18], max: 5, pat: 1.05, layout: 'ilha', plates: 6, seasP: 0.25, windows: 1, stock: { initial: 8 }, cash: 250, cfg: { bugs: 2 }, extra: autoExtra(menu), w: 17, h: 10 });
+  };
+  CC.makeEntomo = function () {
+    const menu = pick(['inseto'], 20, 5150);
+    return prep({ id: 'entomo', nome: 'Restaurante Entomológico', e: '🦗', cor: '#6b8e23', tip: 'Cardápio 100% de insetos comestíveis: grilos, larvas, gafanhoto e formigas! (E ainda tem praga solta…)', menu: menu, tempo: 300, int: [12, 17], max: 5, pat: 1, layout: 'livre', plates: 6, seasP: 0.4, windows: 1, stock: { initial: 8 }, cash: 300, cfg: { bugs: 1 }, extra: autoExtra(menu), w: 17, h: 10 });
+  };
+  CC.makeBlackout = function () {
+    const menu = pick(CLASSIC, 16, 2077);
+    return prep({ id: 'blackout', nome: 'Noite de Apagões', e: '💡', cor: '#1a237e', tip: 'A luz cai de vez em quando — só os chefs têm lanterna! No rush os pedidos aceleram. Compre um gerador na loja.', menu: menu, tempo: 300, int: [14, 19], max: 5, pat: 1.1, layout: 'ilha', plates: 6, seasP: 0.3, windows: 1, cash: 100, cfg: { dark: true, rush: true }, extra: autoExtra(menu), w: 17, h: 10 });
+  };
   CC.dailyKey = CC.dailyKey;
   const baseCustom = CC.makeCustom;
   CC.makeCustom = function (cfg) {
     const lv = baseCustom(cfg);
     lv.windows = cfg.windows || 1; lv.winNames = cfg.windows > 1 ? (cfg.winStyle === 'salao' ? CC.WIN_SALON : CC.WIN_FAST) : null;
-    if (cfg.stock) { lv.stock = { initial: 8 }; lv.cash = 400; }
+    if (cfg.stock) { lv.stock = { initial: cfg.stockInit || 8 }; lv.cash = 400; }
     lv.shop = cfg.shop !== false;
+    lv.lives = lv.endless ? (cfg.lives || 3) : (cfg.lives || 0);
+    lv.cfg = { bugs: cfg.bugs || 0, speed: cfg.speed || 1, burn: cfg.burn != null ? cfg.burn : 1, vip: cfg.vip != null ? cfg.vip : 0.08, rush: !!cfg.rush, dark: !!cfg.dark, priceMul: cfg.priceMul || 1, truckMul: cfg.truckMul || 1, chef: cfg.chef || 1, noCollide: !!cfg.noCollide, tips: cfg.tips !== false };
+    const SZ = { small: [13, 8], medium: [15, 9], large: [19, 11], huge: [23, 13] }, z = SZ[cfg.size || 'medium'];
+    lv.w = z[0]; lv.h = z[1];
+    if (cfg.cash != null) lv.cash = cfg.cash;
     return lv;
   };
 })(window.CC);

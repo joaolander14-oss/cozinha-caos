@@ -82,6 +82,16 @@
         h('li', { className: 'final' }, '🍽️ Prato: ', d.parts.map(function (id, i) { return h(Em, { key: i, e: ITEMS[id].e, size: 16 }); }), d.seas.length ? span({ className: 'opt' }, ' (tempero opcional)') : null)));
   }
 
+  /* despensa (treino): pega qualquer ingrediente */
+  function Pantry(p) {
+    const qs = useState(''), q = qs[0], setQ = qs[1];
+    const ids = Object.keys(CC.ING).sort(function (a, b) { return CC.ING[a].n < CC.ING[b].n ? -1 : 1; }).filter(function (id) { return !q || CC.ING[id].n.toLowerCase().indexOf(q.toLowerCase()) >= 0; });
+    return div({ className: 'overlay' }, div({ className: 'pcwrap' },
+      div({ className: 'topbar' }, h('h1', null, '🗄️ Despensa — escolha um ingrediente'), button({ className: 'btn sm', onClick: p.onClose }, '✖ Fechar')),
+      input({ className: 'search', autoFocus: true, placeholder: '🔎 Buscar ingrediente…', value: q, onChange: function (e) { setQ(e.target.value); } }),
+      div({ className: 'ingrid' }, ids.map(function (id) { return div({ key: id, className: 'ingcard', onClick: function () { p.onTake(id); } }, h(Em, { e: CC.ING[id].e, size: 28 }), div({ className: 'ingn' }, CC.ING[id].n)); }))));
+  }
+
   /* computador: pedir estoque ao caminhão e comprar melhorias na loja */
   function Computer(p) {
     const sn = p.snap, up = sn.up || {};
@@ -118,9 +128,9 @@
         button({ className: 'btn big', disabled: !slots.length || cost > sn.cash, onClick: function () { p.onOrder(slots); setSlots([]); } }, cost > sn.cash ? 'Saldo insuficiente' : '📦 Pedir caminhão'),
         sn.trucks && sn.trucks.length ? div({ className: 'trucks' }, h('h4', null, 'A caminho'), sn.trucks.map(function (t, i) { return div({ key: i }, '🚚 ' + t.n + ' caixas — chega em ' + Math.ceil(t.t) + 's'); })) : null));
     const shopTab = div({ className: 'shopgrid' }, Object.keys(CC.SHOP).map(function (k) {
-      const it = CC.SHOP[k], lvl = up[k] || 0, max = it.cost.length, maxed = lvl >= max, price = it.cost[lvl];
+      const it = CC.SHOP[k], lvl = up[k] || 0, max = it.repeat ? 0 : it.cost.length, maxed = !it.repeat && lvl >= max, price = it.repeat ? it.cost[0] : it.cost[lvl];
       return div({ key: k, className: 'shopcard' + (maxed ? ' maxed' : '') },
-        div({ className: 'shophead' }, h(Em, { e: it.e, size: 30 }), div(null, div({ className: 'ingn' }, it.n), div({ className: 'pips' }, Array.from({ length: max }, function (_, i) { return span({ key: i, className: i < lvl ? 'on' : '' }, '●'); })))),
+        div({ className: 'shophead' }, h(Em, { e: it.e, size: 30 }), div(null, div({ className: 'ingn' }, it.n), it.repeat ? div({ className: 'pips' }, 'comprado ' + lvl + '×') : div({ className: 'pips' }, Array.from({ length: max }, function (_, i) { return span({ key: i, className: i < lvl ? 'on' : '' }, '●'); })))),
         div({ className: 'sub' }, it.d),
         button({ className: 'btn sm', disabled: maxed || price > sn.cash, onClick: function () { p.onBuy(k); } }, maxed ? 'Máximo' : '💵 ' + price + ' — Comprar'));
     }));
@@ -143,6 +153,8 @@
     const online = mode !== 'local';
     const ts2 = useState(null), tip = ts2[0], setTip = ts2[1];
     const pcs = useState(false), pcOpen = pcs[0], setPcOpen = pcs[1];
+    const pns = useState(false), panOpen = pns[0], setPanOpen = pns[1];
+    const panFor = useRef(0), panRef = useRef(false); panRef.current = panOpen;
     const pcRef = useRef(false); pcRef.current = pcOpen;
 
     useEffect(function () {
@@ -167,16 +179,20 @@
       };
       const openPc = function () { if (pcRef.current) return; pcRef.current = true; setPcOpen(true); if (mode === 'local') { pausedRef.current = true; CC.Engine.setPaused(true); setPaused(true); } };
       CC.Engine.onPc = function (idx) { if (mode === 'host' && idx !== 0) MP.toPlayer(idx, { t: 'pc' }); else openPc(); };
-      if (mode === 'guest') MP.on('pc', openPc);
+      const openPan = function (idx) { if (panRef.current) return; panRef.current = true; panFor.current = idx || 0; setPanOpen(true); if (mode === 'local') { pausedRef.current = true; CC.Engine.setPaused(true); setPaused(true); } };
+      CC.Engine.onPantry = function (idx) { if (mode === 'host' && idx !== 0) MP.toPlayer(idx, { t: 'pantry' }); else openPan(idx); };
+      if (mode === 'guest') { MP.on('pc', openPc); MP.on('pantry', openPan); }
       const iv = setInterval(function () {
         const s = CC.Engine.snapshot(); setSnap(s);
         if (s && s.over && s.result && !sv.current) { sv.current = true; const g = CC.Engine.get(); p.onFinish(lv, Object.assign({ nplayers: g ? g.players.length : 1 }, s.result), mode); }
       }, 100);
-      return function () { clearInterval(iv); CC.onPauseKey = null; CC.onBookKey = null; CC.Engine.onPc = null; if (mode === 'guest') MP.on('pc', null); CC.Engine.stop(); };
+      return function () { clearInterval(iv); CC.onPauseKey = null; CC.onBookKey = null; CC.Engine.onPc = null; CC.Engine.onPantry = null; if (mode === 'guest') { MP.on('pc', null); MP.on('pantry', null); } CC.Engine.stop(); };
     }, [lv.id, run, p.players, mode]);
 
     const toggle = function (v) { pausedRef.current = v; CC.Engine.setPaused(v); setPaused(v); };
     const closePc = function () { pcRef.current = false; setPcOpen(false); if (mode === 'local') toggle(false); };
+    const closePan = function () { panRef.current = false; setPanOpen(false); if (mode === 'local') toggle(false); };
+    const doTake = function (id) { if (mode === 'guest') MP.send({ t: 'cmd', c: 'take', id: id }); else CC.Engine.pantryTake(panFor.current, id); closePan(); };
     const doOrder = function (ids) { if (mode === 'guest') MP.send({ t: 'cmd', c: 'order', ids: ids }); else CC.Engine.pcOrder(0, ids); };
     const doBuy = function (id) { if (mode === 'guest') MP.send({ t: 'cmd', c: 'buy', id: id }); else CC.Engine.shopBuy(0, id); };
     const res = snap && snap.result;
@@ -191,23 +207,26 @@
           div({ className: 'stat score' }, '💰 ', snap ? snap.score : 0),
           snap && (snap.stockOn || snap.shopOn) ? div({ className: 'stat cashst', title: 'Dinheiro: use o computador 💻 para estoque e loja' }, '💵 ', snap.cash) : null,
           snap && snap.stockOn && snap.trucks && snap.trucks.length ? div({ className: 'stat' }, '🚚 ' + Math.ceil(Math.min.apply(null, snap.trucks.map(function (t) { return t.t; }))) + 's') : null,
-          lv.endless && snap ? div({ className: 'stat lives' }, '❤️'.repeat(Math.max(0, snap.lives)) + '🖤'.repeat(Math.max(0, 3 - snap.lives))) : null,
+          snap && (lv.endless || lv.lives) && snap.lives != null ? div({ className: 'stat lives' }, '❤️'.repeat(Math.max(0, snap.lives)) + '🖤'.repeat(Math.max(0, (lv.lives || 3) - snap.lives))) : null,
+          snap && (snap.cfgBugs > 0 || snap.killed > 0) ? div({ className: 'stat', title: 'Pragas na cozinha / mortas' }, '🪳 ' + snap.bugsN + ' • ☠️ ' + snap.killed) : null,
           snap && snap.combo > 1 ? div({ className: 'stat combo' }, '🔥 x' + snap.combo) : null,
           pl ? div({ className: 'plist' }, pl.map(function (x, i) { return span({ key: i, className: 'pl' + (i === MP.myIdx ? ' me' : ''), title: x.name }, h(ChefIcon, { skin: x.skin || { color: CC.COLS[i], hat: 'toque' } })); })) : null),
         div({ className: 'hud-r' },
           button({ className: 'btn sm', onClick: function () { toggle(true); setBook(true); } }, '📖 Receitas'), ' ', button({ className: 'btn sm', onClick: function () { toggle(true); } }, online ? '☰ Menu' : '⏸ Pausa'))),
       div({ className: 'tickets' }, snap ? snap.orders.map(function (o) { return h(Ticket, { key: o.id, o: o, lv: lv, nwin: snap.nwin, onHover: function (d, r) { setTip(d ? { dish: d, rect: r } : null); }, onClick: function () { setTip(null); toggle(true); setBook(o.dish); } }); }) : null,
         snap && !snap.orders.length ? div({ className: 'noorder' }, 'Aguardando pedidos…') : null),
-      div({ className: 'stage' }, canvas({ ref: cref, className: 'cv' }),
+      div({ className: 'stage' }, canvas({ ref: cref, className: 'cv', onClick: function (e) { const g = CC.Engine.get(); if (!g || g.over || pausedRef.current) return; const r = e.currentTarget.getBoundingClientRect(); CC.Engine.clickSwat((e.clientX - r.left) / r.width * g.W, (e.clientY - r.top) / r.height * g.H); } }),
+        snap && snap.rush > 0 ? div({ className: 'banner rush' }, '🔥 HORA DO RUSH! ' + Math.ceil(snap.rush) + 's') : null, snap && snap.dark > 0 ? div({ className: 'banner dark' }, '💡 APAGÃO!') : null,
         div({ className: 'toasts' }, snap ? snap.toasts.map(function (t) { return div({ key: t.id, className: 'toast ' + t.kind }, t.txt); }) : null),
         snap && snap.countdown > 0 ? div({ className: 'tipbox' }, lv.tip) : null),
       div({ className: 'ctrl-hint' }, online || nlocal === 1
-        ? 'WASD/Setas mover • Espaço/Enter pegar-colocar • E (segure) cortar/lavar/ralar • Q dash • B receitas • 💻 computador: estoque e loja • passe o mouse num pedido para ver a receita'
+        ? 'WASD/Setas mover • Espaço/Enter pegar-colocar • E (segure) cortar/lavar/ralar • Q dash • R/clique mata inseto • B receitas • 💻 computador: estoque e loja • passe o mouse num pedido para ver a receita'
         : 'P1: WASD • Espaço • E • Q   |   P2: Setas • Enter • Shift dir. • /   |   P3: IJKL • U • O • Y   |   P4: Num 8456 • 0 • Num. • NumEnter   |   🎮 controles'),
       tip && !book && !pcOpen ? h(QuickGuide, { dish: tip.dish, rect: tip.rect }) : null,
+      panOpen && !res ? h(Pantry, { onTake: doTake, onClose: closePan }) : null,
       pcOpen && snap && !res ? h(Computer, { snap: snap, onOrder: doOrder, onBuy: doBuy, onClose: closePc }) : null,
       book && !res ? div({ className: 'overlay' }, div({ className: 'bookwrap' }, h(Book, { initial: book, onBack: function () { setBook(null); toggle(false); } }))) : null,
-      paused && !book && !pcOpen && !res ? div({ className: 'overlay' }, div({ className: 'modal' },
+      paused && !book && !pcOpen && !panOpen && !res ? div({ className: 'overlay' }, div({ className: 'modal' },
         h('h2', null, online ? '☰ Menu (o jogo continua)' : '⏸ Pausado'),
         div({ className: 'tipline' }, lv.tip),
         div({ className: 'row' },
@@ -221,7 +240,7 @@
         div({ className: 'rstats' },
           div(null, '📦 Entregues: ', span({ className: 'v' }, res.delivered)),
           div(null, '❌ Perdidos: ', span({ className: 'v' }, res.failed)),
-          div(null, '💸 Gorjetas: ', span({ className: 'v' }, res.tips)),
+          div(null, '💸 Gorjetas: ', span({ className: 'v' }, res.tips)), res.killed ? div(null, '☠️ Pragas mortas: ', span({ className: 'v' }, res.killed)) : null,
           div(null, '🔥 Melhor combo: ', span({ className: 'v' }, 'x' + res.bestCombo))),
         div({ className: 'need' }, '★ ' + res.need[0] + '   ★★ ' + res.need[1] + '   ★★★ ' + res.need[2]),
         p.newAch && p.newAch.length ? div({ className: 'newach' }, p.newAch.map(function (a) { return div({ key: a[0] }, '🏆 Conquista: ', a[1], ' ', a[2]); })) : null,
@@ -264,6 +283,9 @@
         card('📅', 'Desafio do Dia', 'Cardápio e cozinha iguais para todos hoje.', sv.daily[dk] ? 'Melhor de hoje: ' + sv.daily[dk] : 'Ainda não jogado hoje', function () { p.onPlay(CC.makeDaily()); }, '#e67e22'),
         card('🍟', 'Fast Food', '3 janelas (Balcão, Drive-thru, Delivery): cada pedido vai na janela certa. Estoque e loja.', 'Cardápio de fast food • 5 min', function () { p.onPlay(CC.makeFastFood()); }, '#e74c3c'),
         card('🪟', 'Salão de Restaurante', 'Cada mesa é uma janela. Estoque que acaba, caminhão de entrega e loja de melhorias.', '3 mesas • 5 min', function () { p.onPlay(CC.makeSalon()); }, '#2c7a7b'),
+        card('🪳', 'Infestação!', 'Baratas, moscas, formigas e vespas invadem a cozinha. Mate-as (R ou clique) antes que estraguem a comida.', 'Estoque + loja anti-pragas • 5 min', function () { p.onPlay(CC.makePests()); }, '#5d4037'),
+        card('🦗', 'Restaurante Entomológico', 'Cardápio de insetos comestíveis: grilo frito, larva, gafanhoto e formiga com chocolate!', '20 pratos de insetos', function () { p.onPlay(CC.makeEntomo()); }, '#6b8e23'),
+        card('💡', 'Noite de Apagões', 'A luz cai e volta, com horas de rush. Só os chefs têm lanterna.', 'Eventos aleatórios • 5 min', function () { p.onPlay(CC.makeBlackout()); }, '#1a237e'),
         card('🏪', 'Meu Restaurante', 'Escolha os pratos, o ritmo, o tempo e o layout.', 'Monte seu cardápio', p.onCustom, '#2980b9'),
         card('🌐', 'Online (até 4 chefs)', 'Crie uma sala ou entre com um código.', 'Cozinhe com amigos pela internet', p.onOnline, '#16a085'),
         card('🧪', 'Treino Livre', 'Todos os pratos e equipamentos, sem relógio.', '', function () { p.onPlay(CC.LEVELS[CC.LEVELS.length - 1]); }, '#34495e')));
@@ -271,7 +293,7 @@
 
   /* ---------- restaurante personalizado ---------- */
   function Custom(p) {
-    const init = p.save.custom || { ids: ['hamburguer', 'batata_frita', 'suco_laranja', 'pizza_marg', 'sopa_tomate', 'bolo'], tempo: 240, pace: 1, layout: 'ilha', seasP: 0.3 };
+    const init = Object.assign({ ids: ['hamburguer', 'batata_frita', 'suco_laranja', 'pizza_marg', 'sopa_tomate', 'bolo'], tempo: 240, pace: 1, layout: 'ilha', seasP: 0.3, windows: 1, winStyle: 'fast', size: 'medium', stockInit: 8, priceMul: 1, truckMul: 1, bugs: 0, speed: 1, chef: 1, burn: 1, vip: 0.08, lives: 0, tips: true, rush: false, dark: false, noCollide: false, shop: true, stock: false }, p.save.custom || {});
     const cs = useState(init), cfg = cs[0], setCfg = cs[1];
     const cats = useState('todos'), cat = cats[0], setCat = cats[1];
     const qs = useState(''), q = qs[0], setQ = qs[1];
@@ -286,15 +308,33 @@
       div({ className: 'topbar' }, button({ className: 'btn sm', onClick: p.onBack }, '◀ Modos'), h('h1', null, '🏪 Meu Restaurante'), button({ className: 'btn big', disabled: cfg.ids.length < 2, onClick: function () { p.onStart(cfg); } }, '▶ Abrir (' + cfg.ids.length + ' pratos)')),
       div({ className: 'customcols' },
         div({ className: 'st-card opts2' },
-          h('h3', null, '⚙️ Regras'),
-          h('label', null, 'Duração: ', sel('tempo', [[0, '♾️ Infinito (3 vidas)'], [120, '2 min'], [180, '3 min'], [240, '4 min'], [300, '5 min'], [480, '8 min']])),
-          h('label', null, 'Ritmo: ', sel('pace', [[0, '😌 Tranquilo'], [1, '🙂 Normal'], [2, '😰 Frenético']])),
+          h('h3', null, '⚙️ Regras da partida'),
+          h('h4', null, '⏱️ Ritmo'),
+          h('label', null, 'Duração: ', sel('tempo', [[0, '♾️ Infinito'], [120, '2 min'], [180, '3 min'], [240, '4 min'], [300, '5 min'], [480, '8 min'], [720, '12 min']])),
+          h('label', null, 'Ritmo dos pedidos: ', sel('pace', [[0, '😌 Tranquilo'], [1, '🙂 Normal'], [2, '😰 Frenético']])),
+          h('label', null, 'Velocidade do jogo: ', sel('speed', [[0.75, '🐢 Lenta (0,75×)'], [1, 'Normal (1×)'], [1.25, '🐇 Rápida (1,25×)'], [1.5, '🚀 Turbo (1,5×)']])),
+          h('label', null, 'Vidas (pedidos perdidos): ', sel('lives', [[0, 'Sem limite'], [1, '1 vida'], [3, '3 vidas'], [5, '5 vidas']])),
+          h('label', null, 'Pedidos VIP: ', sel('vip', [[0, 'Nenhum'], [0.08, 'Raros'], [0.2, 'Frequentes'], [0.4, 'Muitos']])),
+          h('label', null, 'Pedidos com tempero: ', sel('seasP', [[0, 'Nunca'], [0.3, 'Às vezes'], [0.6, 'Quase sempre'], [1, 'Sempre']])),
+          h('label', { className: 'chk' }, input({ type: 'checkbox', checked: cfg.tips !== false, onChange: function (e) { set('tips', e.target.checked); } }), ' Gorjetas por rapidez'),
+          h('h4', null, '🍳 Cozinha'),
           h('label', null, 'Layout: ', sel('layout', [['ilha', 'Ilha central'], ['livre', 'Aberta'], ['divisao', 'Dividida']])),
+          h('label', null, 'Tamanho: ', sel('size', [['small', 'Pequena'], ['medium', 'Média'], ['large', 'Grande'], ['huge', 'Enorme']])),
+          h('label', null, 'Comida queima: ', sel('burn', [[0, 'Nunca'], [1.6, 'Devagar'], [1, 'Normal'], [0.6, 'Rápido']])),
+          h('label', null, 'Velocidade dos chefs: ', sel('chef', [[0.8, 'Lenta'], [1, 'Normal'], [1.2, 'Rápida']])),
+          h('label', { className: 'chk' }, input({ type: 'checkbox', checked: !!cfg.noCollide, onChange: function (e) { set('noCollide', e.target.checked); } }), ' Chefs atravessam uns aos outros'),
+          h('h4', null, '🪟 Janelas, estoque e loja'),
           h('label', null, 'Janelas de entrega: ', sel('windows', [[1, '1 janela'], [2, '2 janelas'], [3, '3 janelas'], [4, '4 janelas']])),
           h('label', null, 'Estilo das janelas: ', sel('winStyle', [['fast', 'Balcão / Drive-thru / Delivery'], ['salao', 'Mesas 1, 2, 3…']])),
           h('label', { className: 'chk' }, input({ type: 'checkbox', checked: !!cfg.stock, onChange: function (e) { set('stock', e.target.checked); } }), ' Estoque limitado + caminhão'),
+          cfg.stock ? h('label', null, 'Estoque inicial: ', sel('stockInit', [[4, 'Pouco (4)'], [8, 'Normal (8)'], [16, 'Muito (16)'], [30, 'Farto (30)']])) : null,
+          cfg.stock ? h('label', null, 'Preço do estoque: ', sel('priceMul', [[0.5, 'Barato (0,5×)'], [1, 'Normal'], [1.5, 'Caro (1,5×)'], [2, 'Salgado (2×)']])) : null,
+          cfg.stock ? h('label', null, 'Entrega do caminhão: ', sel('truckMul', [[0.5, 'Rápida (0,5×)'], [1, 'Normal'], [1.5, 'Lenta (1,5×)'], [2, 'Muito lenta']])) : null,
           h('label', { className: 'chk' }, input({ type: 'checkbox', checked: cfg.shop !== false, onChange: function (e) { set('shop', e.target.checked); } }), ' Loja de melhorias'),
-          h('label', null, 'Pedidos com tempero: ', sel('seasP', [[0, 'Nunca'], [0.3, 'Às vezes'], [0.6, 'Quase sempre']])),
+          h('h4', null, '⚡ Desafios'),
+          h('label', null, 'Pragas 🪳: ', sel('bugs', [[0, 'Nenhuma'], [1, 'Poucas'], [2, 'Muitas'], [3, 'Infestação!']])),
+          h('label', { className: 'chk' }, input({ type: 'checkbox', checked: !!cfg.rush, onChange: function (e) { set('rush', e.target.checked); } }), ' 🔥 Horas de rush (pedidos 2× mais rápidos)'),
+          h('label', { className: 'chk' }, input({ type: 'checkbox', checked: !!cfg.dark, onChange: function (e) { set('dark', e.target.checked); } }), ' 💡 Apagões aleatórios'),
           div({ className: 'row' }, button({ className: 'btn sm', onClick: randomPick }, '🎲 12 aleatórios'), button({ className: 'btn sm', onClick: function () { set('ids', []); } }, '🧹 Limpar')),
           div({ className: 'sub pad' }, 'As cozinhas crescem automaticamente para caber todos os ingredientes e equipamentos do seu cardápio.')),
         div({ className: 'st-card' },
@@ -364,7 +404,7 @@
     const camp = CC.LEVELS.filter(function (l) { return !l.practice; });
     const startIt = function () {
       let lv;
-      if (mode === 'endless') lv = CC.makeEndless(); else if (mode === 'fastfood') lv = CC.makeFastFood(); else if (mode === 'salon') lv = CC.makeSalon(); else if (mode === 'daily') lv = CC.makeDaily(); else if (mode === 'train') lv = CC.LEVELS[CC.LEVELS.length - 1];
+      if (mode === 'endless') lv = CC.makeEndless(); else if (mode === 'fastfood') lv = CC.makeFastFood(); else if (mode === 'salon') lv = CC.makeSalon(); else if (mode === 'pests') lv = CC.makePests(); else if (mode === 'entomo') lv = CC.makeEntomo(); else if (mode === 'blackout') lv = CC.makeBlackout(); else if (mode === 'daily') lv = CC.makeDaily(); else if (mode === 'train') lv = CC.LEVELS[CC.LEVELS.length - 1];
       else lv = camp.find(function (l) { return 'c' + l.id === mode; });
       p.onHostStart(lv);
     };
@@ -379,7 +419,7 @@
         div({ className: 'st-card' }, h('h3', null, '🎮 Partida'),
           host ? div(null,
             h('label', null, 'Modo/fase: ', select({ value: mode, onChange: function (e) { setMode(e.target.value); } },
-              option({ value: 'endless' }, '♾️ Modo Infinito'), option({ value: 'fastfood' }, '🍟 Fast Food (3 janelas)'), option({ value: 'salon' }, '🪟 Salão (3 mesas)'), option({ value: 'daily' }, '📅 Desafio do Dia'), option({ value: 'train' }, '🧪 Treino Livre'),
+              option({ value: 'endless' }, '♾️ Modo Infinito'), option({ value: 'fastfood' }, '🍟 Fast Food (3 janelas)'), option({ value: 'salon' }, '🪟 Salão (3 mesas)'), option({ value: 'pests' }, '🪳 Infestação!'), option({ value: 'entomo' }, '🦗 Entomológico'), option({ value: 'blackout' }, '💡 Noite de Apagões'), option({ value: 'daily' }, '📅 Desafio do Dia'), option({ value: 'train' }, '🧪 Treino Livre'),
               camp.map(function (l) { return option({ key: l.id, value: 'c' + l.id }, l.id + '. ' + l.nome); }))),
             div({ className: 'sub pad' }, 'Todos cozinham juntos na mesma cozinha. Todas as fases estão liberadas online.'),
             button({ className: 'btn big', onClick: startIt }, '▶ Começar partida'))
@@ -441,7 +481,7 @@
       div({ className: 'helpgrid' },
         div({ className: 'st-card' }, h('h3', null, '🎮 Controles'),
           div({ className: 'kv' }, div(null, span({ className: 'k' }, 'WASD / Setas'), 'Mover'), div(null, span({ className: 'k' }, 'Espaço / Enter'), 'Pegar, colocar, usar equipamento'),
-            div(null, span({ className: 'k' }, 'E (segurar)'), 'Cortar na tábua, ralar, lavar'), div(null, span({ className: 'k' }, 'Q / Shift'), 'Dash'), div(null, span({ className: 'k' }, 'B'), 'Livro de receitas (na partida)'), div(null, span({ className: 'k' }, 'P / Esc'), 'Pausa / menu')),
+            div(null, span({ className: 'k' }, 'E (segurar)'), 'Cortar na tábua, ralar, lavar'), div(null, span({ className: 'k' }, 'Q / Shift'), 'Dash'), div(null, span({ className: 'k' }, 'B'), 'Livro de receitas (na partida)'), div(null, span({ className: 'k' }, 'R / clique'), 'Matar insetos (modo pragas)'), div(null, span({ className: 'k' }, 'P / Esc'), 'Pausa / menu')),
           h('h4', null, '👥 Até 4 jogadores no mesmo computador'),
           div({ className: 'kv' }, div(null, span({ className: 'k' }, 'P1'), 'WASD • Espaço • E • Q'), div(null, span({ className: 'k' }, 'P2'), 'Setas • Enter • Shift dir. • /'), div(null, span({ className: 'k' }, 'P3'), 'IJKL • U • O • Y'), div(null, span({ className: 'k' }, 'P4'), 'Num 8/5/4/6 • Num0 • Num. • NumEnter')),
           h('h4', null, '🎮 Controle (gamepad)'),
