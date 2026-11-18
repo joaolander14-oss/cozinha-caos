@@ -558,7 +558,7 @@
             h('li', null, 'Sopas, cafés e bebidas só saem do equipamento com um ', h('b', null, 'prato limpo'), ' na mão.'),
             h('li', null, 'Monte o prato juntando os itens: com o prato na mão, interaja com o item. Só combinações do cardápio são aceitas.'),
             h('li', null, 'Temperos: pegue o frasco e use no prato, ou, com o prato na mão, interaja direto com a caixa de tempero.'),
-            h('li', null, h('b', null, 'Utensílios 🍲: '), 'cada equipamento precisa do seu recipiente (panela, frigideira, wok, cesto, jarra…). Depois de alguns usos ele fica ', h('b', null, 'sujo'), ': pegue-o (mão vazia no equipamento vazio), lave na pia (segure E) e pegue outro limpo na ', h('b', null, 'prateleira de utensílios'), ' (aperte E de frente para ela para escolher o tipo).'),
+            h('li', null, h('b', null, 'Utensílios 🍲: '), 'todo modo de preparo (menos os cortes) precisa do seu recipiente: panela, frigideira, grelha, assadeira, jarra, cesto, ramequim, pote… Depois de alguns usos ele fica ', h('b', null, 'sujo'), ': pegue-o (mão vazia no equipamento vazio), lave na pia (segure E) e pegue outro limpo na ', h('b', null, 'prateleira de utensílios'), ' (aperte E de frente para ela para escolher o tipo).'),
             h('li', null, h('b', null, 'Competição ⚔️: '), 'nos modos Duelo, Corrida e Equipes, cada entrega vale pontos para quem a fez. Dash num rival o derruba por um instante.'),
             h('li', null, 'Pratos entregues voltam ', h('b', null, 'sujos'), '. Lave na pia (segure E).'),
             h('li', null, 'Em ⚙️ Ajustes de pedidos (campanha e modos) e em Meu Restaurante você escolhe quantos pedidos aparecem ao mesmo tempo, de quanto em quanto tempo e quanto cada um dura.'),

@@ -139,7 +139,8 @@
         counterBase(c, x, y, '#cfd8dc');
         c.fillStyle = '#90a4ae'; c.fillRect(x + 6, y + 30, TS - 12, 3); c.fillRect(x + 6, y + 50, TS - 12, 3);
         const by = {}; (t.items || []).forEach(function (u) { by[u.ut] = (by[u.ut] || 0) + 1; });
-        Object.keys(by).forEach(function (k, i) {
+        const bk = Object.keys(by); if (bk.length > 6) { c.font = 'bold 9px sans-serif'; c.fillStyle = '#263238'; c.textAlign = 'center'; c.fillText('+' + (bk.length - 6), x + TS - 10, y + 12); }
+        bk.slice(0, 6).forEach(function (k, i) {
           const px = x + 15 + (i % 3) * 17, py = y + 24 + Math.floor(i / 3) * 20;
           c.fillStyle = CC.UT[k].col; c.beginPath(); c.arc(px, py, 7, 0, 7); c.fill(); c.strokeStyle = 'rgba(0,0,0,.5)'; c.lineWidth = 1; c.stroke();
           c.fillStyle = '#000'; emoji(c, CC.UT[k].e, px, py + 1, 9);

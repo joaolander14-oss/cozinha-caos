@@ -40,7 +40,11 @@
     fryer: { n: 'Cesto de fritura', e: '🧺', col: '#b0bec5', uses: 6 }, oven: { n: 'Assadeira', e: '🔲', col: '#78909c', uses: 4 }, blender: { n: 'Jarra', e: '🫙', col: '#80cbc4', uses: 5 },
     mixer: { n: 'Tigela', e: '🥣', col: '#d7ccc8', uses: 5 }, processor: { n: 'Copo do processador', e: '🥤', col: '#90a4ae', uses: 5 }, steamer: { n: 'Cesto de vapor', e: '🎋', col: '#c9a56b', uses: 5 },
     ricecooker: { n: 'Panela de arroz', e: '🍚', col: '#eceff1', uses: 5 }, pressure: { n: 'Panela de pressão', e: '🥫', col: '#78909c', uses: 4 }, bainmarie: { n: 'Pote de banho-maria', e: '🫕', col: '#c9a35b', uses: 5 },
-    sushi: { n: 'Esteira de bambu', e: '🪵', col: '#a1887f', uses: 6 }, breader: { n: 'Bandeja de empanar', e: '🍽️', col: '#c9a56b', uses: 6 }, waffler: { n: 'Forma de crepe', e: '🧇', col: '#8d6e63', uses: 6 }
+    sushi: { n: 'Esteira de bambu', e: '🪵', col: '#a1887f', uses: 6 }, breader: { n: 'Bandeja de empanar', e: '🍽️', col: '#c9a56b', uses: 6 }, waffler: { n: 'Forma de crepe', e: '🧇', col: '#8d6e63', uses: 6 },
+    grill: { n: 'Grelha', e: '🥩', col: '#455a64', uses: 6 }, toaster: { n: 'Cesto de torrar', e: '🍞', col: '#a1887f', uses: 8 }, coffee: { n: 'Jarra de café', e: '☕', col: '#6d4c41', uses: 6 },
+    icecream: { n: 'Cuba de sorvete', e: '🍨', col: '#80deea', uses: 5 }, smoker: { n: 'Grade de defumação', e: '💨', col: '#5d4037', uses: 4 }, torch: { n: 'Ramequim', e: '🍮', col: '#bf360c', uses: 6 },
+    fermenter: { n: 'Pote de fermentação', e: '🫙', col: '#7b8d3a', uses: 4 }, dehydrator: { n: 'Bandeja de desidratação', e: '☀️', col: '#d4a017', uses: 4 }, fountain: { n: 'Bandeja de chocolate', e: '🍫', col: '#5d4037', uses: 5 },
+    roller: { n: 'Rolo de massa', e: '🥖', col: '#d7ccc8', uses: 6 }, popper: { n: 'Panela de pipoca', e: '🍿', col: '#c0392b', uses: 6 }, press: { n: 'Placa da sanduicheira', e: '🥪', col: '#607d8b', uses: 7 }
   };
   CC.mkUt = function (k) { return { ut: k, uses: 0, dirty: false }; };
   function utMax(k) { return Math.max(1, Math.round((CC.UT[k].uses + 2 * up('durable')) * cfg('utUses', 1))); }
