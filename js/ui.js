@@ -11,7 +11,7 @@
   const HATS = ['toque', '🧢', '👑', '🎩', '🎓', '👒', '🪖', '🌟'];
   const DEF = function () {
     return { mods: { max: 0, interval: 1, pat: 1, initial: 0 }, stars: {}, best: {}, sound: true, unlock: false, players: 1, name: 'Chef', skins: [0, 1, 2, 3].map(function (i) { return { color: CC.COLS[i], hat: 'toque' }; }),
-      stats: { delivered: 0, matches: 0, online: 0, bestScore: 0, cats: {}, dishes: {}, endlessBest: 0 }, ach: {}, daily: {}, custom: null };
+      stats: { delivered: 0, matches: 0, online: 0, bestScore: 0, cats: {}, dishes: {}, endlessBest: 0 }, ach: {}, daily: {}, custom: null, endlessCfg: null };
   };
   function loadSave() {
     const d = DEF();
@@ -327,7 +327,7 @@
       div({ className: 'topbar' }, button({ className: 'btn sm', onClick: p.onBack }, '◀ Menu'), h('h1', null, 'Modos de jogo'), h(PlayersSeg, { save: sv, setPlayers: p.setPlayers })),
       h(OrderMods, { mods: sv.mods, setMods: p.setMods }),
       div({ className: 'lvgrid' },
-        card('♾️', 'Modo Infinito', 'Sem relógio, 3 vidas ❤️, 2 janelas, estoque e loja. Os pedidos aceleram até o caos.', 'Recorde: ' + (sv.stats.endlessBest || 0), function () { p.onPlay(CC.makeEndless()); }, '#8e44ad'),
+        card('♾️', 'Modo Infinito', 'Sem relógio, vidas ❤️, janelas, estoque e loja. Os pedidos aceleram até o caos. Personalize tudo!', 'Recorde: ' + (sv.stats.endlessBest || 0), p.onEndless, '#8e44ad'),
         card('📅', 'Desafio do Dia', 'Cardápio e cozinha iguais para todos hoje.', sv.daily[dk] ? 'Melhor de hoje: ' + sv.daily[dk] : 'Ainda não jogado hoje', function () { p.onPlay(CC.makeDaily()); }, '#e67e22'),
         card('🍟', 'Fast Food', '3 janelas (Balcão, Drive-thru, Delivery): cada pedido vai na janela certa. Estoque e loja.', 'Cardápio de fast food • 5 min', function () { p.onPlay(CC.makeFastFood()); }, '#e74c3c'),
         card('🪟', 'Salão de Restaurante', 'Cada mesa é uma janela. Estoque que acaba, caminhão de entrega e loja de melhorias.', '3 mesas • 5 min', function () { p.onPlay(CC.makeSalon()); }, '#2c7a7b'),
@@ -343,8 +343,11 @@
   }
 
   /* ---------- restaurante personalizado ---------- */
+  const CLASSIC_CATS = ['lanche', 'salada', 'cafe', 'pizza', 'sopa', 'br', 'mar', 'mex', 'ita', 'doce', 'bebida'];
+  function randomClassic(n) { const all = Object.keys(DISHES).filter(function (id) { return CLASSIC_CATS.indexOf(DISHES[id].cat) >= 0; }).sort(function () { return Math.random() - 0.5; }); return all.slice(0, n); }
   function Custom(p) {
-    const init = Object.assign({ ids: ['hamburguer', 'batata_frita', 'suco_laranja', 'pizza_marg', 'sopa_tomate', 'bolo'], tempo: 240, pace: 1, layout: 'ilha', seasP: 0.3, windows: 1, winStyle: 'fast', size: 'medium', stockInit: 8, priceMul: 1, truckMul: 1, bugs: 0, speed: 1, chef: 1, burn: 1, vip: 0.08, lives: 0, tips: true, rush: false, dark: false, noCollide: false, shop: true, stock: false, maxOrders: 0, interval: 1, patience: 1, initial: 0, utensils: true, utUses: 1, versus: 'coop', pvp: false, goal: 0 }, p.save.custom || {});
+    const kind = p.kind || 'custom', endless = kind === 'endless';
+    const init = Object.assign({ ids: ['hamburguer', 'batata_frita', 'suco_laranja', 'pizza_marg', 'sopa_tomate', 'bolo'], tempo: 240, pace: 1, layout: 'ilha', seasP: 0.3, windows: 1, winStyle: 'fast', size: 'medium', stockInit: 8, priceMul: 1, truckMul: 1, bugs: 0, speed: 1, chef: 1, burn: 1, vip: 0.08, lives: 0, tips: true, rush: false, dark: false, noCollide: false, shop: true, stock: false, maxOrders: 0, interval: 1, patience: 1, initial: 0, utensils: true, utUses: 1, versus: 'coop', pvp: false, goal: 0 }, endless ? { ids: randomClassic(22), tempo: 0, lives: 3, windows: 2, winStyle: 'fast', stock: true, shop: true, stockInit: 8, pace: 1, layout: 'ilha', size: 'large' } : {}, (endless ? p.save.endlessCfg : p.save.custom) || {});
     const cs = useState(init), cfg = cs[0], setCfg = cs[1];
     const cats = useState('todos'), cat = cats[0], setCat = cats[1];
     const qs = useState(''), q = qs[0], setQ = qs[1];
@@ -356,19 +359,19 @@
     const randomPick = function () { const all = Object.keys(DISHES).sort(function () { return Math.random() - 0.5; }); set('ids', all.slice(0, 12)); };
     const sel = function (k, opts) { return select({ value: cfg[k], onChange: function (e) { const v = e.target.value; set(k, isNaN(+v) ? v : +v); } }, opts.map(function (o) { return option({ key: o[0], value: o[0] }, o[1]); })); };
     return div({ className: 'screen' },
-      div({ className: 'topbar' }, button({ className: 'btn sm', onClick: p.onBack }, '◀ Modos'), h('h1', null, '🏪 Meu Restaurante'), button({ className: 'btn big', disabled: cfg.ids.length < 2, onClick: function () { p.onStart(cfg); } }, '▶ Abrir (' + cfg.ids.length + ' pratos)')),
+      div({ className: 'topbar' }, button({ className: 'btn sm', onClick: p.onBack }, '◀ Modos'), h('h1', null, endless ? '♾️ Modo Infinito — personalizar' : '🏪 Meu Restaurante'), p.onQuick ? button({ className: 'btn', onClick: p.onQuick }, '⚡ Jogar com o padrão') : null, button({ className: 'btn big', disabled: cfg.ids.length < 2, onClick: function () { p.onStart(cfg); } }, '▶ Abrir (' + cfg.ids.length + ' pratos)')),
       div({ className: 'customcols' },
         div({ className: 'st-card opts2' },
           h('h3', null, '⚙️ Regras da partida'),
           h('h4', null, '⏱️ Ritmo'),
-          h('label', null, 'Duração: ', sel('tempo', [[0, '♾️ Infinito'], [120, '2 min'], [180, '3 min'], [240, '4 min'], [300, '5 min'], [480, '8 min'], [720, '12 min']])),
+          endless ? null : h('label', null, 'Duração: ', sel('tempo', [[0, '♾️ Infinito'], [120, '2 min'], [180, '3 min'], [240, '4 min'], [300, '5 min'], [480, '8 min'], [720, '12 min']])),
           h('label', null, 'Ritmo dos pedidos: ', sel('pace', [[0, '😌 Tranquilo'], [1, '🙂 Normal'], [2, '😰 Frenético']])),
           h('label', null, 'Pedidos ao mesmo tempo: ', sel('maxOrders', [[0, 'Automático'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6'], [8, '8'], [10, '10'], [12, '12']])),
           h('label', null, 'Intervalo entre pedidos: ', sel('interval', [[0.4, 'Muito curto (0,4×)'], [0.6, 'Curto (0,6×)'], [0.8, 'Um pouco menor'], [1, 'Padrão'], [1.3, 'Um pouco maior'], [1.6, 'Longo (1,6×)'], [2, 'Muito longo (2×)'], [3, 'Enorme (3×)']])),
           h('label', null, 'Duração de cada pedido: ', sel('patience', [[0.4, 'Muito curta (0,4×)'], [0.6, 'Curta (0,6×)'], [0.8, 'Um pouco menor'], [1, 'Padrão'], [1.3, 'Um pouco maior'], [1.6, 'Longa (1,6×)'], [2, 'Muito longa (2×)'], [3, 'Enorme (3×)']])),
           h('label', null, 'Pedidos já na abertura: ', sel('initial', [[0, 'Nenhum'], [1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5']])),
           h('label', null, 'Velocidade do jogo: ', sel('speed', [[0.75, '🐢 Lenta (0,75×)'], [1, 'Normal (1×)'], [1.25, '🐇 Rápida (1,25×)'], [1.5, '🚀 Turbo (1,5×)']])),
-          h('label', null, 'Vidas (pedidos perdidos): ', sel('lives', [[0, 'Sem limite'], [1, '1 vida'], [3, '3 vidas'], [5, '5 vidas']])),
+          h('label', null, 'Vidas (pedidos perdidos): ', sel('lives', endless ? [[1, '1 vida (uma chance só!)'], [2, '2 vidas'], [3, '3 vidas'], [5, '5 vidas'], [10, '10 vidas']] : [[0, 'Sem limite'], [1, '1 vida'], [3, '3 vidas'], [5, '5 vidas']])),
           h('label', null, 'Pedidos VIP: ', sel('vip', [[0, 'Nenhum'], [0.08, 'Raros'], [0.2, 'Frequentes'], [0.4, 'Muitos']])),
           h('label', null, 'Pedidos com tempero: ', sel('seasP', [[0, 'Nunca'], [0.3, 'Às vezes'], [0.6, 'Quase sempre'], [1, 'Sempre']])),
           h('label', { className: 'chk' }, input({ type: 'checkbox', checked: cfg.tips !== false, onChange: function (e) { set('tips', e.target.checked); } }), ' Gorjetas por rapidez'),
@@ -613,7 +616,16 @@
     const leaveRoom = function () { MP.leave(); setScreen('online'); };
     switch (screen) {
       case 'levels': return h(Levels, { save: save, onBack: gotoMenu, onPlay: function (lv) { play(lv); }, setPlayers: function (n) { upd({ players: n }); }, setMods: function (m) { upd({ mods: m }); } });
-      case 'modes': return h(Modes, { save: save, onBack: gotoMenu, onPlay: function (lv) { play(lv); }, onCustom: function () { setScreen('custom'); }, onOnline: function () { setScreen('online'); }, setPlayers: function (n) { upd({ players: n }); }, setMods: function (m) { upd({ mods: m }); } });
+      case 'modes': return h(Modes, { save: save, onBack: gotoMenu, onPlay: function (lv) { play(lv); }, onCustom: function () { setScreen('custom'); }, onEndless: function () { setScreen('endless'); }, onOnline: function () { setScreen('online'); }, setPlayers: function (n) { upd({ players: n }); }, setMods: function (m) { upd({ mods: m }); } });
+      case 'endless': return h(Custom, { kind: 'endless', save: save, onBack: function () { setScreen('modes'); },
+        onQuick: function () { play(CC.makeEndless()); },
+        onStart: function (cfg) {
+          upd({ endlessCfg: cfg });
+          const lv = CC.makeCustom(Object.assign({}, cfg, { tempo: 0 }));
+          lv.id = 'endless'; lv.nome = 'Modo Infinito'; lv.e = '♾️'; lv.cor = '#8e44ad'; lv.endless = true; lv.stars = [300, 700, 1300];
+          lv.tip = 'Sem relógio: aguente o máximo de pedidos. Os pedidos aceleram com o tempo!';
+          play(lv);
+        } });
       case 'custom': return h(Custom, { save: save, onBack: function () { setScreen('modes'); }, onStart: function (cfg) { upd({ custom: cfg }); play(CC.makeCustom(cfg)); } });
       case 'online': return h(Online, { save: save, onBack: function () { MP.leave(); setScreen('modes'); }, onLobby: function () { setScreen('lobby'); } });
       case 'lobby': return h(Lobby, { onLeave: leaveRoom, onClosed: function () { MP.leave(); setScreen('online'); }, onHostStart: function (lv) { play(lv, 'host'); }, onGuestStart: function (d) { play(d.lv, 'guest', d.init); } });
